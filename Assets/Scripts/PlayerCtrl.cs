@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem; // 1. これを追加
 
 public class PlayerCrtl : MonoBehaviour
 {
@@ -12,9 +13,10 @@ public class PlayerCrtl : MonoBehaviour
 
     void Update()
     {
-        if(Input.GetButtonDown("Jump"))
+        // 2. 新しいInput Systemの書き方に変更
+        if(Keyboard.current.spaceKey.wasPressedThisFrame) 
         {
-            rb.AddForceY(jumpPower, ForceMode2D.Impulse);
+            rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
         }
     }
 }
