@@ -16,6 +16,7 @@ public class PlayerCrtl : MonoBehaviour
         // 2. 新しいInput Systemの書き方に変更
         if(Keyboard.current.spaceKey.wasPressedThisFrame) 
         {
+            rb.linearVelocityY = 0;
             rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
         }
     }
