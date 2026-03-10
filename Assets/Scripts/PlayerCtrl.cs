@@ -2,15 +2,19 @@ using UnityEngine;
 
 public class PlayerCrtl : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    Rigidbody2D rb;
+    public float jumpPower;
+
     void Start()
     {
-        
+        rb = GetComponent<Rigidbody2D>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        
+        if(Input.GetButtonDown("Jump"))
+        {
+            rb.AddForceY(jumpPower, ForceMode2D.Impulse);
+        }
     }
 }
