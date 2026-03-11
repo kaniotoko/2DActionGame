@@ -6,6 +6,7 @@ public class PlayerCrtl : MonoBehaviour
     Rigidbody2D rb;
     CircleCollider2D coll;
     public float speed;
+    public float smooth;
     public float jumpPower;
     
 
@@ -26,7 +27,7 @@ public class PlayerCrtl : MonoBehaviour
             float right = Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed ? 1f : 0f;
             x = right - left;
         }
-        rb.AddForceX(x * speed - rb.linearVelocityX);
+        rb.AddForceX((x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
 
         RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
 
