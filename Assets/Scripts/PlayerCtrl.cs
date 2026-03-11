@@ -29,7 +29,29 @@ public class PlayerCrtl : MonoBehaviour
         }
         rb.AddForceX((x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
 
+        if(x > 0)
+        {
+            transform.rotation = Quaternion.Euler(0, 0, 0);
+        }
+        if(x < 0)
+        {
+            transform.rotation = Quaternion.Euler(0, 180, 0);
+        }
+
         RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+
+        Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack);
+
+        if((slopeHitForward ^ slopeHitBack) && x == 0)
+        {
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
+        }
+        else
+        {
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
 
         if(groundHit)
         {
