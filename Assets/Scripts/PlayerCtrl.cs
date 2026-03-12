@@ -5,6 +5,8 @@ public class PlayerCrtl : MonoBehaviour
 {
     Rigidbody2D rb;
     CircleCollider2D coll;
+    bool isJump = false;
+    bool isSlope = false;
     public float speed;
     public float smooth;
     public float jumpPower;
@@ -38,28 +40,45 @@ public class PlayerCrtl : MonoBehaviour
             transform.rotation = Quaternion.Euler(0, 180, 0);
         }
 
-        RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        //RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
 
-        Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack);
+        Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
-        if((slopeHitForward ^ slopeHitBack) && x == 0)
+        if(slopeHitForward || slopeHitBack)
         {
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
-        }
-        else
-        {
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-
-        if(groundHit)
-        {
+            if(rb.linearVelocityY < 0)
+            {
+                isJump = false;
+            }
             if(Keyboard.current.spaceKey.wasPressedThisFrame) 
             {
+                isJump = true;
                 rb.linearVelocityY = 0;
                 rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
             }
+        }
+
+        if(slopeHitForward ^ slopeHitBack)
+        {
+            isSlope = true;
+            if(x == 0 && !isJump)
+            {
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
+            }
+            else
+            {
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            }
+        }
+        else
+        {
+            if(isSlope && !isJump)
+            {
+                rb.linearVelocityY = -3;
+            }
+            isSlope = false;
         }
         
     }
