@@ -5,6 +5,7 @@ public class PlayerCrtl : MonoBehaviour
 {
     Rigidbody2D rb;
     CircleCollider2D coll;
+    Animator anim;
     bool isJump = false;
     bool isSlope = false;
     public float speed;
@@ -16,6 +17,7 @@ public class PlayerCrtl : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         coll = GetComponent<CircleCollider2D>();
+        anim = GetComponent<Animator>();
     }
 
     void Update()
@@ -30,6 +32,8 @@ public class PlayerCrtl : MonoBehaviour
             x = right - left;
         }
         rb.AddForceX((x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
+
+        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
 
         if(x > 0)
         {
@@ -46,15 +50,23 @@ public class PlayerCrtl : MonoBehaviour
 
         Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
+        if(rb.linearVelocityY < 0)
+        {
+            anim.SetBool("isFall", true);
+        }
+
         if(slopeHitForward || slopeHitBack)
         {
-            if(rb.linearVelocityY < 0)
+            anim.SetBool("isFall", false);
+            if(rb.linearVelocityY <= 0)
             {
                 isJump = false;
+                anim.SetBool("isJump", false);
             }
             if(Keyboard.current.spaceKey.wasPressedThisFrame) 
             {
                 isJump = true;
+                anim.SetBool("isJump", true);
                 rb.linearVelocityY = 0;
                 rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
             }
