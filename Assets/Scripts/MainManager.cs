@@ -24,5 +24,6 @@ public class MainManager : MonoBehaviour
     public void GameClear()
     {
         gameClearView.SetActive(true);
+        Time.timeScale = 0;
     }
 }

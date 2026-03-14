@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 
 public class PlayerCrtl : MonoBehaviour
 {
+    public MainManager mainManager;
     Rigidbody2D rb;
     CircleCollider2D coll;
     Animator anim;
@@ -92,6 +93,18 @@ public class PlayerCrtl : MonoBehaviour
             }
             isSlope = false;
         }
+
+        if(transform.position.y < -7.5f)
+        {
+            mainManager.GameOver();
+        }
         
+    }
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if(other.gameObject.layer == LayerMask.NameToLayer("Gem"))
+        {
+            mainManager.GameClear();
+        }
     }
 }
