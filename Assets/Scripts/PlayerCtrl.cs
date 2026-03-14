@@ -50,7 +50,7 @@ public class PlayerCrtl : MonoBehaviour
 
         Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
-        if(rb.linearVelocityY < 0)
+        if(rb.linearVelocityY <= 0)
         {
             anim.SetBool("isFall", true);
         }
