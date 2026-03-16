@@ -10,10 +10,11 @@ public class EnemyCrtl : MonoBehaviour
     bool isJump = false;
     bool isSlope = false;
     float time;
-    public float speed;
+    float targetPosX;
     public float smooth;
     public float jumpPower;
     public float jumpTime; //何秒後にジャンプするか
+    public float moveDistance;
     
 
     void Start()
@@ -37,7 +38,12 @@ public class EnemyCrtl : MonoBehaviour
         if(slopeHitForward || slopeHitBack)
         {
             anim.SetBool("isFall", false);
-            time += Time.deltaTime;
+
+            if(Vector3.Distance(player.position, transform.position) < moveDistance)
+            {
+                time += Time.deltaTime;
+            }
+
             if(rb.linearVelocityY <= 0)
             {
                 isJump = false;
@@ -62,12 +68,13 @@ public class EnemyCrtl : MonoBehaviour
             {
                 transform.rotation = Quaternion.Euler(0, 0, 0);
             }
+            targetPosX = player.position.x;
 
             time = 0;
         }
         if(isJump)
         {
-            rb.AddForceX((-transform.right.x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
+            rb.AddForceX((targetPosX - transform.position.x) * smooth * Time.deltaTime);
             anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
         }
 
