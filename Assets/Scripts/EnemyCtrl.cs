@@ -75,7 +75,6 @@ public class EnemyCrtl : MonoBehaviour
         if(isJump)
         {
             rb.AddForceX((targetPosX - transform.position.x) * smooth * Time.deltaTime);
-            anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
         }
 
         if(transform.position.y < -7.5f)
