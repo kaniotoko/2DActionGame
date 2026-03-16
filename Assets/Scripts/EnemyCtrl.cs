@@ -9,9 +9,11 @@ public class EnemyCrtl : MonoBehaviour
     Animator anim;
     bool isJump = false;
     bool isSlope = false;
+    float time;
     public float speed;
     public float smooth;
     public float jumpPower;
+    public float jumpTime; //何秒後にジャンプするか
     
 
     void Start()
@@ -23,33 +25,9 @@ public class EnemyCrtl : MonoBehaviour
 
     void Update()
     {
-        // 左右の矢印キーやA/Dキーの状態を -1.0 〜 1.0 の数値で取得
-        float x = 0;
-        if (Keyboard.current != null)//現在のキーボードが使用可能かどうか（なくてもいい）
-        {
-            // A/Dキーや左右矢印キーの押し込み具合を判定
-            float left = Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed ? 1f : 0f;
-            float right = Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed ? 1f : 0f;
-            x = right - left;
-        }
-        rb.AddForceX((x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
-
-        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
-
-        if(x > 0)
-        {
-            transform.rotation = Quaternion.Euler(0, 0, 0);
-        }
-        if(x < 0)
-        {
-            transform.rotation = Quaternion.Euler(0, 180, 0);
-        }
-
         //RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
-
-        Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
         if(rb.linearVelocityY <= 0)
         {
@@ -59,52 +37,44 @@ public class EnemyCrtl : MonoBehaviour
         if(slopeHitForward || slopeHitBack)
         {
             anim.SetBool("isFall", false);
+            time += Time.deltaTime;
             if(rb.linearVelocityY <= 0)
             {
                 isJump = false;
                 anim.SetBool("isJump", false);
-            }
-            if(Keyboard.current.spaceKey.wasPressedThisFrame) 
-            {
-                isJump = true;
-                anim.SetBool("isJump", true);
-                rb.linearVelocityY = 0;
-                rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePosition;
             }
         }
+        
+        if(time >= jumpTime)
+        {
+            isJump = true;
+            anim.SetBool("isJump", true);
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            rb.linearVelocityY = 0;
+            rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
 
-        if(slopeHitForward ^ slopeHitBack)
-        {
-            isSlope = true;
-            if(x == 0 && !isJump)
+            if(player.position.x > transform.position.x)
             {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
+                transform.rotation = Quaternion.Euler(0, 180, 0);
             }
-            else
+            if(player.position.x < transform.position.x)
             {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                transform.rotation = Quaternion.Euler(0, 0, 0);
             }
+
+            time = 0;
         }
-        else
+        if(isJump)
         {
-            if(isSlope && !isJump)
-            {
-                rb.linearVelocityY = -3;
-            }
-            isSlope = false;
+            rb.AddForceX((-transform.right.x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
+            anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
         }
 
         if(transform.position.y < -7.5f)
         {
-            mainManager.GameOver();
+            Destroy(gameObject);
         }
         
-    }
-    void OnTriggerEnter2D(Collider2D other)
-    {
-        if(other.gameObject.layer == LayerMask.NameToLayer("Gem"))
-        {
-            mainManager.GameClear();
-        }
     }
 }
