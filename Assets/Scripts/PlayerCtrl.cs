@@ -107,4 +107,23 @@ public class PlayerCrtl : MonoBehaviour
             mainManager.GameClear();
         }
     }
+
+    void OnCollisionEnter2D(Collision2D other)
+    {
+        if(other.gameObject.layer == LayerMask.NameToLayer("Enemy"))
+        {
+            if(other.transform.position.y < transform.position.y - coll.radius)
+            {
+                Destroy(other.gameObject);
+                isJump = true;
+                anim.SetBool("isJump", true);
+                rb.linearVelocityY = 0;
+                rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
+            }
+            else
+            {
+                mainManager.GameOver();
+            }
+        }
+    }
 }
