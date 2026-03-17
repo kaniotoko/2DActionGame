@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MainManager : MonoBehaviour
 {
@@ -7,7 +8,7 @@ public class MainManager : MonoBehaviour
 
     void Start()
     {
-        
+        Time.timeScale = 1;
     }
 
     void Update()
@@ -25,5 +26,15 @@ public class MainManager : MonoBehaviour
     {
         gameClearView.SetActive(true);
         Time.timeScale = 0;
+    }
+
+    public void LoadMainScene()
+    {
+        SceneManager.LoadScene("MainScene");
+    }
+
+    public void LoadStartScene()
+    {
+        SceneManager.LoadScene("StartScene");
     }
 }

@@ -5,7 +5,7 @@ public class StartManager : MonoBehaviour
 {
     void Start()
     {
-        
+        Time.timeScale = 1;
     }
 
     void Update()
