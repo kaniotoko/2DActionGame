@@ -3,12 +3,15 @@ using UnityEngine.SceneManagement;
 
 public class MainManager : MonoBehaviour
 {
+    public GameObject[] stages;
+    public int stageNumber;
     public GameObject gameOverView;
     public GameObject gameClearView;
 
     void Start()
     {
         Time.timeScale = 1;
+        Instantiate(stages[stageNumber]); //Instantiateでstageを出現させる
     }
 
     void Update()
