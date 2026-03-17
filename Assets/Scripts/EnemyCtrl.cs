@@ -22,6 +22,7 @@ public class EnemyCrtl : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
+        player = GameObject.Find("Player").transform; //シーンに出現された時Playerというオブジェクトを代入する
     }
 
     void Update()
