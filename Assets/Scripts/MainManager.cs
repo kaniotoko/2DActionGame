@@ -29,6 +29,10 @@ public class MainManager : MonoBehaviour
     {
         gameClearView.SetActive(true);
         Time.timeScale = 0;
+        if(stageNumber > PlayerPrefs.GetInt("ClearStage"))
+        {
+            PlayerPrefs.SetInt("ClearStage", stageNumber); //PlayerPrefsは端末にデータを保存してくれる(ClearStageという名前で、stageNumberに保存してくれる)
+        }
     }
 
     public void LoadMainScene()
