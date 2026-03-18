@@ -11,6 +11,8 @@ public class MainManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1;
+
+        stageNumber = PlayerPrefs.GetInt("TryStage");
         Instantiate(stages[stageNumber]); //Instantiateでstageを出現させる
     }
 
@@ -33,6 +35,18 @@ public class MainManager : MonoBehaviour
         {
             PlayerPrefs.SetInt("ClearStage", stageNumber); //PlayerPrefsは端末にデータを保存してくれる(ClearStageという名前で、stageNumberに保存してくれる)
         }
+    }
+
+    public void Retry()
+    {
+        PlayerPrefs.SetInt("TryStage", stageNumber);
+        LoadMainScene();
+    }
+
+    public void Next()
+    {
+        PlayerPrefs.SetInt("TryStage", stageNumber + 1);
+        LoadMainScene();
     }
 
     public void LoadMainScene()
