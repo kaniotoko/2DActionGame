@@ -12,6 +12,7 @@ public class PlayerCrtl : MonoBehaviour
     public float speed;
     public float smooth;
     public float jumpPower;
+    public AudioSource jumpSE;
     
 
     void Start()
@@ -70,6 +71,7 @@ public class PlayerCrtl : MonoBehaviour
                 anim.SetBool("isJump", true);
                 rb.linearVelocityY = 0;
                 rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
+                jumpSE.Play();
             }
         }
 
