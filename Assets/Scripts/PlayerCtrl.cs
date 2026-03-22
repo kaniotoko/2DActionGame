@@ -49,7 +49,7 @@ public class PlayerCrtl : MonoBehaviour
         RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
 
-        Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
+        //Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
         if(rb.linearVelocityY <= 0)
         {
