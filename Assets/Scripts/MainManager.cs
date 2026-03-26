@@ -8,6 +8,7 @@ public class MainManager : MonoBehaviour
     public GameObject gameOverView;
     public GameObject gameClearView;
     public AudioSource deathSE;
+    public AudioSource goalSE;
 
     void Start()
     {
@@ -37,6 +38,7 @@ public class MainManager : MonoBehaviour
     
     public void GameClear()
     {
+        goalSE.Play();
         gameClearView.SetActive(true);
         Time.timeScale = 0;
         if(stageNumber > PlayerPrefs.GetInt("ClearStage"))
