@@ -7,13 +7,20 @@ public class MainManager : MonoBehaviour
     public int stageNumber;
     public GameObject gameOverView;
     public GameObject gameClearView;
+    public AudioSource deathSE;
 
     void Start()
     {
         Time.timeScale = 1;
 
+        // これを追加！ これでTime.timeScale = 0でも音が止まりません
+        if (deathSE != null)
+        {
+            deathSE.ignoreListenerPause = true;
+        }
+
         stageNumber = PlayerPrefs.GetInt("TryStage");
-        Instantiate(stages[stageNumber]); //Instantiateでstageを出現させる
+        Instantiate(stages[stageNumber]); 
     }
 
     void Update()
@@ -23,6 +30,7 @@ public class MainManager : MonoBehaviour
 
     public void GameOver()
     {
+        deathSE.Play();
         gameOverView.SetActive(true);
         Time.timeScale = 0; //ゲーム内の時間を止める
     }

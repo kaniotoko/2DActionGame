@@ -9,6 +9,7 @@ public class PlayerCrtl : MonoBehaviour
     Animator anim;
     bool isJump = false;
     bool isSlope = false;
+    bool isDead = false;
     public float speed;
     public float smooth;
     public float jumpPower;
@@ -96,8 +97,10 @@ public class PlayerCrtl : MonoBehaviour
             isSlope = false;
         }
 
-        if(transform.position.y < -7.5f)
+        if(transform.position.y < -7.5f && !isDead)
         {
+            isDead = true; // 死んだフラグを立てる
+            Debug.Log("落下死：一度だけ実行します");
             mainManager.GameOver();
         }
         
