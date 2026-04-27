@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class EnemyCrtl : MonoBehaviour
+public class FrogCtrl : MonoBehaviour
 {
     public Transform player;
     Rigidbody2D rb;
