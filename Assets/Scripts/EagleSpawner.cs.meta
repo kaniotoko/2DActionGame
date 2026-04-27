@@ -1,2 +1,13 @@
 fileFormatVersion: 2
 guid: 004a9e873a78d464caa776c916163982
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - eaglePrefab: {fileID: 6583324967794373027, guid: a48b0318a49a040288e5643c0cb0bf00, type: 3}
+  - player: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
