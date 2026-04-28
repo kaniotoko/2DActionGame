@@ -59,7 +59,7 @@ public class EagleCtrl : MonoBehaviour
         float offsetX = Mathf.Sin(Time.time * frequency) * amplitude;
         Vector3 targetPos = new Vector3(basePos.x + offsetX, basePos.y, 0);
         
-        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * 2f);
+        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * 2f);// Lerpで滑らかに移動させると自然になります
     }
 
     void StartAttack()
@@ -77,7 +77,8 @@ public class EagleCtrl : MonoBehaviour
         currentAngle = startAngle;
 
         if (transform.position.x > player.position.x)
-            rotationDirection = -1f; 
+            rotationDirection = -1f;
+            
         else
             rotationDirection = 1f;
         
@@ -93,8 +94,8 @@ public class EagleCtrl : MonoBehaviour
         float a = Mathf.Abs(startAttackPos.x - fixedCenterPos.x); // 横半径も固定中心点基準にする
         float b = hoverHeight;
 
-        float currentX = fixedCenterPos.x + a * Mathf.Cos(currentAngle);
-        float currentY = fixedCenterPos.y + b * Mathf.Sin(currentAngle);
+        float currentX = fixedCenterPos.x + a * Mathf.Cos(currentAngle); //x座標を媒介変数表示
+        float currentY = fixedCenterPos.y + b * Mathf.Sin(currentAngle); //y座標を媒介変数表示
 
         transform.position = new Vector3(currentX, currentY, 0);
 
