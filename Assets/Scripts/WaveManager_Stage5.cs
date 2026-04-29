@@ -18,7 +18,7 @@ public class WaveManager : MonoBehaviour
     public Vector2 gemSpawnPos;      // Gemの出現位置
     
     private int spawnCount = 0;
-    private int totalSpawned = 10;
+    private int totalSpawned = 12;
 
     void Start()
     {
