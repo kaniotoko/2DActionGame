@@ -18,7 +18,7 @@ public class WaveManager : MonoBehaviour
     public Vector2 gemSpawnPos;      // Gemの出現位置
     
     private int spawnCount = 0;
-    private int totalSpawned = 0;
+    private int totalSpawned = 2;
 
     void Start()
     {
@@ -45,7 +45,7 @@ public class WaveManager : MonoBehaviour
         if (spawnCount >= totalSpawned)
         {
             // 全ての敵が出し切られた後の処理（例：5秒後にGem出現）
-            Invoke("SpawnGem", 5.0f);
+            Invoke("SpawnGem", 10.0f);
         }
     }
 
