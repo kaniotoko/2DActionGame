@@ -89,14 +89,14 @@ MonoBehaviour:
     duration: 10
   - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
     spawnPosition: {x: -17, y: 1.5}
-    spawnTime: 13
+    spawnTime: 3
     duration: 30
   - enemyPrefab: {fileID: 6583324967794373027, guid: a48b0318a49a040288e5643c0cb0bf00, type: 3}
     spawnPosition: {x: 0, y: 8}
     spawnTime: 20
     duration: 10
   - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
-    spawnPosition: {x: 12, y: 1}
+    spawnPosition: {x: 11.5, y: 1}
     spawnTime: 24
     duration: 20
   - enemyPrefab: {fileID: 6583324967794373027, guid: a48b0318a49a040288e5643c0cb0bf00, type: 3}
@@ -104,20 +104,28 @@ MonoBehaviour:
     spawnTime: 33
     duration: 10
   - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
-    spawnPosition: {x: -12, y: 1}
-    spawnTime: 33
+    spawnPosition: {x: -11.5, y: 1}
+    spawnTime: 24
     duration: 20
   - enemyPrefab: {fileID: 6583324967794373027, guid: a48b0318a49a040288e5643c0cb0bf00, type: 3}
     spawnPosition: {x: 0, y: 8}
-    spawnTime: 48
+    spawnTime: 45
     duration: 20
   - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
     spawnPosition: {x: 5, y: 1}
-    spawnTime: 50
+    spawnTime: 45
     duration: 18
   - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
     spawnPosition: {x: -5, y: 1}
-    spawnTime: 50
+    spawnTime: 45
+    duration: 18
+  - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
+    spawnPosition: {x: -5, y: 1}
+    spawnTime: 3
+    duration: 18
+  - enemyPrefab: {fileID: 230855705983778299, guid: c56a94dd77a2d42e3947f388e931350f, type: 3}
+    spawnPosition: {x: -5, y: 1}
+    spawnTime: 3
     duration: 18
   gemPrefab: {fileID: 737956220449250086, guid: 444cb9140b9b04cb291448cb9ab47126, type: 3}
   gemSpawnPos: {x: 0, y: 2}
