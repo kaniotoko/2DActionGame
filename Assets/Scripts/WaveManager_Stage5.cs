@@ -45,7 +45,7 @@ public class WaveManager : MonoBehaviour
         if (spawnCount >= totalSpawned)
         {
             // 全ての敵が出し切られた後の処理
-            Invoke("SpawnGem", 25.0f);
+            Invoke("SpawnGem", 22.0f);
         }
     }
 
