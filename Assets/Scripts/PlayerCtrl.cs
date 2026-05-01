@@ -97,7 +97,7 @@ public class PlayerCrtl : MonoBehaviour
             isSlope = false;
         }
 
-        if(transform.position.y < -7.5f && !isDead)
+        if(transform.position.y < -11f && !isDead)
         {
             isDead = true; // 死んだフラグを立てる
             Debug.Log("落下死：一度だけ実行します");
