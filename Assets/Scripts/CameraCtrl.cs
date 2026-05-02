@@ -12,6 +12,6 @@ public class CameraCtrl : MonoBehaviour
 
     void Update()
     {
-        transform.position = new Vector3(player.position.x, startPos.y, startPos.z);
+        transform.position = new Vector3(player.position.x, player.position.y, startPos.z);
     }
 }

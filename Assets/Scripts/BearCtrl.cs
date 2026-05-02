@@ -1,14 +1,11 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class BearCtrl : MonoBehaviour
 {
     Rigidbody2D rb;
     CapsuleCollider2D coll;
-    float time;
-    float targetPosX;
     public float speed;
-    
+    public float wallDist = 0.5f; // 壁を検知する距離
 
     void Start()
     {
@@ -19,38 +16,46 @@ public class BearCtrl : MonoBehaviour
     void Update()
     {
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        float rayDist = (coll.size.y / 2) + 1.5f;
 
+        // --- 崖の判定 ---
+        float rayDist = (coll.size.y / 2) + 1.5f;
         RaycastHit2D slopeHitForward = Physics2D.Raycast(origin + (transform.right * coll.size.x / 4), Vector2.down, rayDist, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeHitBack = Physics2D.Raycast(origin - (transform.right * coll.size.x / 4), Vector2.down, rayDist, LayerMask.GetMask("Ground"));
 
+        // --- 壁の判定 ---
+        RaycastHit2D wallHit = Physics2D.Raycast(origin, transform.right, wallDist + (coll.size.x / 2), LayerMask.GetMask("Ground"));
+        Debug.DrawRay(origin, transform.right * (wallDist + (coll.size.x / 2)), Color.red);
+
         if (slopeHitForward || slopeHitBack)
         {
-            if (rb.linearVelocityY <= 0)
+            if (rb.linearVelocity.y <= 0f)
             {
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-                
-                rb.linearVelocityX = transform.right.x * speed;
+                rb.linearVelocity = new Vector2(transform.right.x * speed, rb.linearVelocity.y);
             }
-        }
-        
-        if (!slopeHitForward)
-        {
-            if (Mathf.Approximately(transform.rotation.eulerAngles.y, 0))
-            {
-                transform.rotation = Quaternion.Euler(0, 180, 0);
-            }
-            else
-            {
-                transform.rotation = Quaternion.Euler(0, 0, 0);
-            }
-            
-            rb.linearVelocityX = 0;
         }
 
-        if (transform.position.y < -7.5f)
+        if (!slopeHitForward || wallHit)
+        {
+            Flip();
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+        }
+
+        if (transform.position.y < -11f)
         {
             Destroy(gameObject);
+        }
+    }
+
+    void Flip()
+    {
+        if (Mathf.Approximately(transform.rotation.eulerAngles.y, 0f))
+        {
+            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        }
+        else
+        {
+            transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         }
     }
 }

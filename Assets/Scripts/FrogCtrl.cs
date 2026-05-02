@@ -78,7 +78,7 @@ public class FrogCtrl : MonoBehaviour
             rb.AddForceX((targetPosX - transform.position.x) * smooth * Time.deltaTime);
         }
 
-        if(transform.position.y < -7.5f)
+        if(transform.position.y < -11f)
         {
             Destroy(gameObject);
         }

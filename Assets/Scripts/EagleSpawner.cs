@@ -4,9 +4,11 @@ using UnityEngine.InputSystem;
 public class EagleSpawner : MonoBehaviour
 {
     public GameObject eaglePrefab;
-    public float spawnDistance = 15f; // プレイヤーがどのくらい近づいたら出すか
+    private float spawnDistance = 30f; // プレイヤーがどのくらい近づいたら出すか
+    private float despawnDistance = 50f; // プレイヤーがどのくらい離れたら消すか
     private bool hasSpawned = false;
     public Transform player;
+    private GameObject spawnedEagle;
 
     void Start()
     {
@@ -19,11 +21,26 @@ public class EagleSpawner : MonoBehaviour
         {
             Spawn();
         }
+        else if (hasSpawned && Vector2.Distance(transform.position, player.position) >= despawnDistance)
+        {
+            Despawn();
+        }
     }
 
     void Spawn()
     {
-        Instantiate(eaglePrefab, transform.position, Quaternion.identity);// プレハブを生成
+        spawnedEagle = Instantiate(eaglePrefab, transform.position, Quaternion.identity);// プレハブを生成
         hasSpawned = true;
+    }
+
+    void Despawn()
+    {
+        // オブジェクトが存在すれば削除
+        if (spawnedEagle != null)
+        {
+            Destroy(spawnedEagle);
+        }
+        // 再度近づいた時に生成されるようフラグをリセット
+        hasSpawned = false;
     }
 }
