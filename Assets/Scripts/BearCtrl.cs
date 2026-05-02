@@ -28,17 +28,17 @@ public class BearCtrl : MonoBehaviour
 
         if (slopeHitForward || slopeHitBack)
         {
-            if (rb.velocity.y <= 0f)
+            if (rb.linearVelocity.y <= 0f)
             {
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-                rb.velocity = new Vector2(transform.right.x * speed, rb.velocity.y);
+                rb.linearVelocity = new Vector2(transform.right.x * speed, rb.linearVelocity.y);
             }
         }
 
         if (!slopeHitForward || wallHit)
         {
             Flip();
-            rb.velocity = new Vector2(0f, rb.velocity.y);
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         }
 
         if (transform.position.y < -11f)
