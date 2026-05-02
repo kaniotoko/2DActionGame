@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Spawner : MonoBehaviour
+public class FrogSpawner : MonoBehaviour
 {
     public GameObject frogPrefab;
     private float spawnDistance = 30f; // プレイヤーがどのくらい近づいたら出すか
