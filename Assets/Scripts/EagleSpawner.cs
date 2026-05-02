@@ -5,7 +5,7 @@ public class EagleSpawner : MonoBehaviour
 {
     public GameObject eaglePrefab;
     private float spawnDistance = 30f; // プレイヤーがどのくらい近づいたら出すか
-    private float despawnDistance = 30f; // プレイヤーがどのくらい離れたら消すか
+    private float despawnDistance = 50f; // プレイヤーがどのくらい離れたら消すか
     private bool hasSpawned = false;
     public Transform player;
     private GameObject spawnedEagle;
