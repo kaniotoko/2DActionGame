@@ -6037,6 +6037,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BearCtrl
   speed: 5
+  wallDist: 0.5
 --- !u!70 &4154261664797871242
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
