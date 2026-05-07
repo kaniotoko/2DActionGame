@@ -69,30 +69,4 @@ public class BatCtrl : MonoBehaviour
         else
             transform.rotation = Quaternion.Euler(0, 180, 0);
     }
-
-    // Groundレイヤーのブロックに当たったら死亡処理を開始する
-    void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (Death) return;
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
-            StartCoroutine(DieRoutine());
-    }
-
-    // PlayerCtrlからスタンプ判定時に呼ばれる
-    public void Stomped()
-    {
-        if (Death) return;
-        StartCoroutine(DieRoutine());
-    }
-
-    // 1秒間コライダーを無効にして静止した後に消える
-    IEnumerator DieRoutine()
-    {
-        Death = true;
-        rb.linearVelocity = Vector2.zero;
-        rb.gravityScale = 0;
-        col.enabled = false;// コライダーを無効にしてプレイヤーが踏んだ後にもう一度当たるのを防ぐ
-        yield return new WaitForSeconds(1f);
-        Destroy(gameObject);
-    }
 }
