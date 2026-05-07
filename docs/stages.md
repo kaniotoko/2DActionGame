@@ -77,3 +77,15 @@
 | 登場する敵 | Bear × 3、Frog × 4、Eagle × 1 |
 
 Spawner の詳細な動作は [enemies.md](./enemies.md) を参照。
+
+---
+
+### Stage 7
+
+| 項目 | 内容 |
+|------|------|
+| 形式 | 横移動形式 |
+| 敵の配置方式 | Spawner（プレイヤーの接近で出現・離脱で消滅） |
+| 登場する敵 | Frog × 2、Bat × 8 |
+
+Spawner の詳細な動作は [enemies.md](./enemies.md) を参照。
