@@ -6,6 +6,7 @@ public class BatCtrl : MonoBehaviour
     Transform player;
     Rigidbody2D rb;
     Collider2D col;
+    Animator anim;
 
     public float detectDistance = 12f;// プレイヤーを検知する距離
     public float moveSpeed = 3f;// プレイヤーに向かって飛ぶ速さ
@@ -21,6 +22,7 @@ public class BatCtrl : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
+        anim = GetComponent<Animator>();
         rb.gravityScale = 0;
         player = GameObject.Find("Player").transform;
     }
@@ -33,6 +35,7 @@ public class BatCtrl : MonoBehaviour
 
         if (!Attacking && dist <= detectDistance)
         {
+            anim.SetBool("isAttacking", true);
             Attacking = true;
             dropping = true;
             dropStartY = transform.position.y;
