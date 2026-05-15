@@ -160450,6 +160450,7 @@ GameObject:
   - component: {fileID: 5815594112399906174}
   - component: {fileID: 5652666897505683872}
   - component: {fileID: 3016225713547605662}
+  - component: {fileID: 2050207354648417333}
   m_Layer: 6
   m_Name: MovePlatform
   m_TagString: Untagged
@@ -160541,7 +160542,7 @@ BoxCollider2D:
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: b559216b194bf4fe29f344daa2df0ac2, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -160587,7 +160588,7 @@ Rigidbody2D:
   m_GameObject: {fileID: 7740040997318511954}
   m_BodyType: 1
   m_Simulated: 1
-  m_UseFullKinematicContacts: 0
+  m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
@@ -160604,6 +160605,20 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!114 &2050207354648417333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7740040997318511954}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d8666762a53b4df1b6c9cb9ee292142, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LiftCtrl
+  targetX: 50
+  speed: 3
 --- !u!1 &8270980932441664058
 GameObject:
   m_ObjectHideFlags: 0
