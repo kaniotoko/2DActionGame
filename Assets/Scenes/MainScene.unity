@@ -1536,7 +1536,7 @@ GameObject:
   - component: {fileID: 1465438599}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1695,6 +1695,7 @@ MonoBehaviour:
   smooth: 1200
   jumpPower: 17
   jumpSE: {fileID: 2010857450}
+  platformVelX: 0
 --- !u!95 &1465438599
 Animator:
   serializedVersion: 7
@@ -2149,6 +2150,7 @@ MonoBehaviour:
   - {fileID: 774573896399312759, guid: 86e99aecda0bc41c1a60f10fe35604d1, type: 3}
   - {fileID: 6829953295709262894, guid: 3808923e4919b4d50b1151bf8df0d315, type: 3}
   - {fileID: 4964068132607052026, guid: 69bae37f8dc7344fe8dc30cc167fe489, type: 3}
+  - {fileID: 8662722095869232006, guid: 5e8d70ddec1f74af1a4d5a9b3f15a49a, type: 3}
   stageNumber: 0
   gameOverView: {fileID: 3887645}
   gameClearView: {fileID: 1021591601}
