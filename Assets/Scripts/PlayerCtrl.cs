@@ -14,6 +14,7 @@ public class PlayerCrtl : MonoBehaviour
     public float smooth;
     public float jumpPower;
     public AudioSource jumpSE;
+    [HideInInspector] public float platformVelX = 0f;
     
 
     void Start()
@@ -34,9 +35,9 @@ public class PlayerCrtl : MonoBehaviour
             float right = Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed ? 1f : 0f;
             x = right - left;
         }
-        rb.AddForceX((x * speed - rb.linearVelocityX) * smooth * Time.deltaTime);
+        rb.AddForceX((x * speed + platformVelX - rb.linearVelocityX) * smooth * Time.deltaTime);
 
-        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocityX));
+        anim.SetFloat("Speed", Mathf.Abs(x));
 
         if(x > 0)
         {
