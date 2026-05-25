@@ -6,8 +6,7 @@ public class LiftCtrl : MonoBehaviour
     public float speed = 3f;      // 移動速度
 
     Rigidbody2D rb;
-    Rigidbody2D playerRb;
-    bool playerOnPlatform = false;
+    PlayerCrtl playerCtrl;
     bool arrived = false;
     bool initialRide = false;
 
@@ -24,16 +23,14 @@ public class LiftCtrl : MonoBehaviour
         {
             rb.MovePosition(new Vector2(targetX, rb.position.y));
             arrived = true;
+            if (playerCtrl != null)
+            {
+                playerCtrl.platformVelX = 0f;
+            }
             return;
         }
 
         Vector2 delta = new Vector2(speed * Time.fixedDeltaTime, 0);
-
-        if (playerOnPlatform && playerRb != null)
-        {
-            playerRb.MovePosition(playerRb.position + delta);
-        }
-
         rb.MovePosition(rb.position + delta);
     }
 
@@ -42,9 +39,12 @@ public class LiftCtrl : MonoBehaviour
         if (other.gameObject.CompareTag("Player") &&
             other.transform.position.y > transform.position.y)
         {
-            playerRb = other.gameObject.GetComponent<Rigidbody2D>();
-            playerOnPlatform = true;
+            playerCtrl = other.gameObject.GetComponent<PlayerCrtl>();
             initialRide = true;
+            if (playerCtrl != null && !arrived)
+            {
+                playerCtrl.platformVelX = speed;
+            }
         }
     }
 
@@ -52,8 +52,11 @@ public class LiftCtrl : MonoBehaviour
     {
         if (other.gameObject.CompareTag("Player"))
         {
-            playerOnPlatform = false;
-            playerRb = null;
+            if (playerCtrl != null)
+            {
+                playerCtrl.platformVelX = 0f;
+            }
+            playerCtrl = null;
         }
     }
 }
