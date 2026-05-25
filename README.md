@@ -9,7 +9,7 @@ Unity 6 で作成した 2D サイドスクロールアクションゲームで�
 
 ## スクリーンショット
 
-![ゲームプレイ](Recordings/Image%20Sequence_002_0455.jpg)
+![ゲームプレイ](docs/images/Image%20Sequence_002_0455.jpg)
 
 ## 使用技術
 
