@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 public class MainManager : MonoBehaviour
 {
     public GameObject[] stages;
+    public bool[] stageShowBG;
     public int stageNumber;
     public GameObject gameOverView;
     public GameObject gameClearView;
@@ -21,7 +22,13 @@ public class MainManager : MonoBehaviour
         }
 
         stageNumber = PlayerPrefs.GetInt("TryStage");
-        Instantiate(stages[stageNumber]); 
+        Instantiate(stages[stageNumber]);
+
+        if (stageNumber < stageShowBG.Length && !stageShowBG[stageNumber])
+        {
+            var bg = Camera.main.transform.Find("BG");
+            if (bg != null) bg.gameObject.SetActive(false);
+        }
     }
 
     void Update()
