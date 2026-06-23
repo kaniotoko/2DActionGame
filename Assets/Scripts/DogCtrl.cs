@@ -28,8 +28,9 @@ public class DogCtrl : MonoBehaviour
     public bool isIdle = true;
     public bool isNotice = false;
     public bool isChase = false;
-    public bool isSet = false;
+    public bool isCliffStop = false;
     public bool isJump = false;
+    public bool isReturning = false;
 
     enum DogState { Idle, NoticeEnter, Chase, CliffStop, Jumping, Returning }
     DogState state = DogState.Idle;
@@ -68,20 +69,43 @@ public class DogCtrl : MonoBehaviour
 
             case DogState.Chase:
                 if (!isNotice)
+                {
+                    isChase = false;
+                    isNotice = false;
                     TransitionTo(DogState.Returning);
+                }
                 else
                     UpdateChase();
                 break;
         }
 
-        // bool フラグを state から同期（アニメーターや外部スクリプト参照用）
-        isIdle  = state == DogState.Idle;
-        isChase = state == DogState.Chase || state == DogState.CliffStop || state == DogState.Jumping;
-        isSet   = state == DogState.CliffStop;
-        isJump  = state == DogState.Jumping;
+        // bool フラグを state から同期（デバッグ表示用）
+        isIdle      = state == DogState.Idle;
+        isChase     = state == DogState.Chase || state == DogState.CliffStop || state == DogState.Jumping;
+        isCliffStop = state == DogState.CliffStop;
+        isJump      = state == DogState.Jumping;
+        isReturning = state == DogState.Returning;
+
+        SyncAnimatorParams();
 
         if (transform.position.y < -11f)
             Destroy(gameObject);
+    }
+
+    // -------------------------------------------------------
+    // Animator状態変数：6状態（Idle / Notice / Chase / CliffStop / Jump / Returning）
+    // state を一元的にAnimatorへ反映する
+    // -------------------------------------------------------
+    void SyncAnimatorParams()
+    {
+        if (anim == null) return;
+
+        anim.SetBool("isIdle", state == DogState.Idle);
+        anim.SetBool("isNotice", state == DogState.NoticeEnter);
+        anim.SetBool("isChase", state == DogState.Chase);
+        anim.SetBool("isCliffStop", state == DogState.CliffStop);
+        anim.SetBool("isJump", state == DogState.Jumping);
+        anim.SetBool("isReturning", state == DogState.Returning);
     }
 
     void TransitionTo(DogState next)
@@ -92,6 +116,7 @@ public class DogCtrl : MonoBehaviour
         switch (next)
         {
             case DogState.NoticeEnter:
+                isIdle = false;
                 rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
                 StartCoroutine(NoticeRoutine());
                 break;
@@ -186,8 +211,6 @@ public class DogCtrl : MonoBehaviour
     // -------------------------------------------------------
     IEnumerator NoticeRoutine()
     {
-        if (anim != null) anim.SetBool("isNotice", true);
-
         for (int i = 0; i < 2; i++)
         {
             yield return new WaitUntil(IsGrounded);
@@ -196,8 +219,6 @@ public class DogCtrl : MonoBehaviour
             yield return new WaitUntil(IsGrounded);
             if (i < 1) yield return new WaitForSeconds(0.1f);
         }
-
-        if (anim != null) anim.SetBool("isNotice", false);
 
         // Update が NoticeEnter を監視しているので、ここに到達するのは
         // プレイヤーが範囲内にいる場合のみ（範囲外なら TransitionTo(Returning) 済み）
@@ -214,6 +235,7 @@ public class DogCtrl : MonoBehaviour
     {
         yield return new WaitForSeconds(cliffStopTime);
 
+        isCliffStop = false;
         state = DogState.Jumping;
         float dir = transform.right.x;
         rb.linearVelocity = new Vector2(dir * cliffJumpForceX, cliffJumpForceY);
@@ -222,7 +244,10 @@ public class DogCtrl : MonoBehaviour
         yield return new WaitUntil(IsGrounded);
 
         if (isNotice)
+        {
+            isJump = false;
             state = DogState.Chase;
+        }
         else
             StartCoroutine(ReturnToIdleRoutine());
     }
@@ -236,6 +261,8 @@ public class DogCtrl : MonoBehaviour
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         yield return new WaitForSeconds(1f);
         state = DogState.Idle;
+        isIdle = true;
+        isReturning = false;
         idleCycleTimer = 0f;
     }
 
