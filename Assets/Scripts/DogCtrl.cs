@@ -5,7 +5,7 @@ public class DogCtrl : MonoBehaviour
 {
     Transform player;
     Rigidbody2D rb;
-    CapsuleCollider2D coll;
+    CircleCollider2D coll;
     Animator anim;
 
     [Header("検知設定")]
@@ -42,7 +42,7 @@ public class DogCtrl : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        coll = GetComponent<CapsuleCollider2D>();
+        coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
         player = GameObject.Find("Player").transform;
     }
@@ -155,16 +155,16 @@ public class DogCtrl : MonoBehaviour
         }
 
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        float rayDist = coll.size.y / 2 + 1.5f;
+        float rayDist = coll.radius + 1.5f;
 
         RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.size.x / 4),
+            origin + transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
         RaycastHit2D slopeBack = Physics2D.Raycast(
-            origin - transform.right * (coll.size.x / 4),
+            origin - transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
         RaycastHit2D wallHit = Physics2D.Raycast(
-            origin, transform.right, wallDist + coll.size.x / 2,
+            origin, transform.right, wallDist + coll.radius,
             LayerMask.GetMask("Ground"));
 
         if ((slopeForward || slopeBack) && rb.linearVelocity.y <= 0f)
@@ -188,10 +188,10 @@ public class DogCtrl : MonoBehaviour
             transform.rotation = Quaternion.Euler(0, 0, 0);
 
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        float rayDist = coll.size.y / 2 + 1.5f;
+        float rayDist = coll.radius + 1.5f;
 
         RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.size.x / 4),
+            origin + transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
 
         bool grounded = IsGrounded();
@@ -225,7 +225,7 @@ public class DogCtrl : MonoBehaviour
         if (isNotice)
             state = DogState.Chase;
         else
-            StartCoroutine(ReturnToIdleRoutine());
+            StartCoroutine(ReturnToIdleRoutine());//NoticeRoutine実行中にプレイヤが範囲内から逃れた時にDogは見失い、またIdleに戻る
     }
 
     // -------------------------------------------------------
@@ -269,7 +269,7 @@ public class DogCtrl : MonoBehaviour
     bool IsGrounded()
     {
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        return Physics2D.Raycast(origin, Vector2.down, coll.size.y / 2 + 0.15f, LayerMask.GetMask("Ground"));
+        return Physics2D.Raycast(origin, Vector2.down, coll.radius + 0.15f, LayerMask.GetMask("Ground"));
     }
 
     void Flip()
