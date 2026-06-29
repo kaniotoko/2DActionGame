@@ -5,7 +5,7 @@ public class DogCtrl : MonoBehaviour
 {
     Transform player;
     Rigidbody2D rb;
-    CapsuleCollider2D coll;
+    CircleCollider2D coll;
     Animator anim;
 
     [Header("検知設定")]
@@ -13,10 +13,12 @@ public class DogCtrl : MonoBehaviour
 
     [Header("Idle設定")]
     public float idleSpeed = 1.5f;
+    public float idleSlopeSpeed = 3f;
     public float wallDist = 0.5f;
 
     [Header("Chase設定")]
     public float chaseSpeed = 4f;
+    public float chaseRange = 10f;
     public float cliffStopTime = 0.5f;
     public float cliffJumpForceY = 10f;
     public float cliffJumpForceX = 5f;
@@ -32,6 +34,10 @@ public class DogCtrl : MonoBehaviour
     public bool isJump = false;
     public bool isReturning = false;
 
+    [Header("物理マテリアル")]
+    public PhysicsMaterial2D movingMat;   // Dog_NoFriction を Inspector で割り当て
+    public PhysicsMaterial2D stoppedMat;  // Dog_Friction  を Inspector で割り当て
+
     enum DogState { Idle, NoticeEnter, Chase, CliffStop, Jumping, Returning }
     DogState state = DogState.Idle;
 
@@ -42,7 +48,7 @@ public class DogCtrl : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        coll = GetComponent<CapsuleCollider2D>();
+        coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
         player = GameObject.Find("Player").transform;
     }
@@ -112,6 +118,8 @@ public class DogCtrl : MonoBehaviour
     {
         StopAllCoroutines();
         state = next;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        if (movingMat != null) coll.sharedMaterial = movingMat;
 
         switch (next)
         {
@@ -148,27 +156,33 @@ public class DogCtrl : MonoBehaviour
 
         if (anim != null) anim.SetBool("isWalk", !stopped);
 
+        Vector3 origin = transform.position + (Vector3)coll.offset;
+        float rayDist = coll.radius + 1.5f;
+
+        RaycastHit2D slopeForward = Physics2D.Raycast(
+            origin - transform.right * (coll.radius / 2),
+            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeBack = Physics2D.Raycast(
+            origin + transform.right * (coll.radius / 2),
+            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
+        RaycastHit2D wallHit = Physics2D.Raycast(
+            origin, -transform.right, wallDist + coll.radius,
+            LayerMask.GetMask("Ground"));
+
+        coll.sharedMaterial = stopped ? stoppedMat : movingMat;
+
         if (stopped)
         {
             rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             return;
         }
 
-        Vector3 origin = transform.position + (Vector3)coll.offset;
-        float rayDist = coll.size.y / 2 + 1.5f;
-
-        RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.size.x / 4),
-            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
-        RaycastHit2D slopeBack = Physics2D.Raycast(
-            origin - transform.right * (coll.size.x / 4),
-            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
-        RaycastHit2D wallHit = Physics2D.Raycast(
-            origin, transform.right, wallDist + coll.size.x / 2,
-            LayerMask.GetMask("Ground"));
-
         if ((slopeForward || slopeBack) && rb.linearVelocity.y <= 0f)
-            rb.linearVelocity = new Vector2(transform.right.x * idleSpeed, rb.linearVelocity.y);
+        {
+            bool goingUphill = slopeForward && slopeBack && slopeForward.distance < slopeBack.distance;
+            float currentSpeed = goingUphill ? idleSlopeSpeed : idleSpeed;
+            rb.linearVelocity = new Vector2(-transform.right.x * currentSpeed, rb.linearVelocity.y);
+        }
 
         if (!slopeForward || wallHit)
         {
@@ -188,10 +202,10 @@ public class DogCtrl : MonoBehaviour
             transform.rotation = Quaternion.Euler(0, 0, 0);
 
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        float rayDist = coll.size.y / 2 + 1.5f;
+        float rayDist = coll.radius + 1.5f;
 
         RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.size.x / 4),
+            origin - transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
 
         bool grounded = IsGrounded();
@@ -203,7 +217,7 @@ public class DogCtrl : MonoBehaviour
         }
 
         if (grounded)
-            rb.linearVelocity = new Vector2(transform.right.x * chaseSpeed, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(-transform.right.x * chaseSpeed, rb.linearVelocity.y);
     }
 
     // -------------------------------------------------------
@@ -215,14 +229,14 @@ public class DogCtrl : MonoBehaviour
         {
             yield return new WaitUntil(IsGrounded);
             rb.linearVelocity = new Vector2(0f, bouncePower);
-            yield return null;                        // 1フレーム待って地面から浮く
-            yield return new WaitUntil(IsGrounded);
+            yield return new WaitUntil(() => !IsGrounded()); // 地面から離れるまで待つ
+            yield return new WaitUntil(IsGrounded);          // 着地まで待つ
             if (i < 1) yield return new WaitForSeconds(0.1f);
         }
 
         // Update が NoticeEnter を監視しているので、ここに到達するのは
         // プレイヤーが範囲内にいる場合のみ（範囲外なら TransitionTo(Returning) 済み）
-        if (isNotice)
+        if (Vector3.Distance(transform.position, player.position) < chaseRange)
             state = DogState.Chase;
         else
             StartCoroutine(ReturnToIdleRoutine());
@@ -235,19 +249,20 @@ public class DogCtrl : MonoBehaviour
     {
         yield return new WaitForSeconds(cliffStopTime);
 
-        isCliffStop = false;
         state = DogState.Jumping;
-        float dir = transform.right.x;
+        if (anim != null)
+        {
+            anim.SetBool("isCliffStop", false);
+            anim.SetBool("isJump", true);
+        }
+        float dir = -transform.right.x;
         rb.linearVelocity = new Vector2(dir * cliffJumpForceX, cliffJumpForceY);
 
-        yield return null;                           // 1フレーム待って地面から浮く
-        yield return new WaitUntil(IsGrounded);
+        yield return new WaitUntil(() => !IsGrounded()); // 地面から離れるまで待つ
+        yield return new WaitUntil(IsGrounded);          // 着地まで待つ
 
         if (isNotice)
-        {
-            isJump = false;
             state = DogState.Chase;
-        }
         else
             StartCoroutine(ReturnToIdleRoutine());
     }
@@ -258,6 +273,7 @@ public class DogCtrl : MonoBehaviour
     IEnumerator ReturnToIdleRoutine()
     {
         state = DogState.Returning;
+        if (stoppedMat != null) coll.sharedMaterial = stoppedMat;
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         yield return new WaitForSeconds(1f);
         state = DogState.Idle;
@@ -269,7 +285,7 @@ public class DogCtrl : MonoBehaviour
     bool IsGrounded()
     {
         Vector3 origin = transform.position + (Vector3)coll.offset;
-        return Physics2D.Raycast(origin, Vector2.down, coll.size.y / 2 + 0.15f, LayerMask.GetMask("Ground"));
+        return Physics2D.Raycast(origin, Vector2.down, coll.radius + 0.15f, LayerMask.GetMask("Ground"));
     }
 
     void Flip()
