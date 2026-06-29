@@ -158,17 +158,17 @@ public class DogCtrl : MonoBehaviour
         float rayDist = coll.radius + 1.5f;
 
         RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.radius / 2),
-            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
-        RaycastHit2D slopeBack = Physics2D.Raycast(
             origin - transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeBack = Physics2D.Raycast(
+            origin + transform.right * (coll.radius / 2),
+            Vector2.down, rayDist, LayerMask.GetMask("Ground"));
         RaycastHit2D wallHit = Physics2D.Raycast(
-            origin, transform.right, wallDist + coll.radius,
+            origin, -transform.right, wallDist + coll.radius,
             LayerMask.GetMask("Ground"));
 
         if ((slopeForward || slopeBack) && rb.linearVelocity.y <= 0f)
-            rb.linearVelocity = new Vector2(transform.right.x * idleSpeed, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(-transform.right.x * idleSpeed, rb.linearVelocity.y);
 
         if (!slopeForward || wallHit)
         {
@@ -191,7 +191,7 @@ public class DogCtrl : MonoBehaviour
         float rayDist = coll.radius + 1.5f;
 
         RaycastHit2D slopeForward = Physics2D.Raycast(
-            origin + transform.right * (coll.radius / 2),
+            origin - transform.right * (coll.radius / 2),
             Vector2.down, rayDist, LayerMask.GetMask("Ground"));
 
         bool grounded = IsGrounded();
@@ -203,7 +203,7 @@ public class DogCtrl : MonoBehaviour
         }
 
         if (grounded)
-            rb.linearVelocity = new Vector2(transform.right.x * chaseSpeed, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(-transform.right.x * chaseSpeed, rb.linearVelocity.y);
     }
 
     // -------------------------------------------------------
@@ -237,7 +237,7 @@ public class DogCtrl : MonoBehaviour
 
         isCliffStop = false;
         state = DogState.Jumping;
-        float dir = transform.right.x;
+        float dir = -transform.right.x;
         rb.linearVelocity = new Vector2(dir * cliffJumpForceX, cliffJumpForceY);
 
         yield return null;                           // 1フレーム待って地面から浮く
