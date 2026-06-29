@@ -207,3 +207,5 @@ MonoBehaviour:
   isCliffStop: 0
   isJump: 0
   isReturning: 0
+  movingMat: {fileID: 6200000, guid: 9037c65be18784b6aa70d162a29ae926, type: 2}
+  stoppedMat: {fileID: 6200000, guid: b559216b194bf4fe29f344daa2df0ac2, type: 2}

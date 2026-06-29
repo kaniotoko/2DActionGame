@@ -13,6 +13,7 @@ public class DogCtrl : MonoBehaviour
 
     [Header("Idle設定")]
     public float idleSpeed = 1.5f;
+    public float idleSlopeSpeed = 3f;
     public float wallDist = 0.5f;
 
     [Header("Chase設定")]
@@ -33,14 +34,16 @@ public class DogCtrl : MonoBehaviour
     public bool isJump = false;
     public bool isReturning = false;
 
+    [Header("物理マテリアル")]
+    public PhysicsMaterial2D movingMat;   // Dog_NoFriction を Inspector で割り当て
+    public PhysicsMaterial2D stoppedMat;  // Dog_Friction  を Inspector で割り当て
+
     enum DogState { Idle, NoticeEnter, Chase, CliffStop, Jumping, Returning }
     DogState state = DogState.Idle;
 
     float idleCycleTimer = 0f;
     const float IDLE_WALK_TIME = 3f;
     const float IDLE_STOP_TIME = 2f;
-
-    bool isSlope = false;
 
     void Start()
     {
@@ -115,6 +118,8 @@ public class DogCtrl : MonoBehaviour
     {
         StopAllCoroutines();
         state = next;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        if (movingMat != null) coll.sharedMaterial = movingMat;
 
         switch (next)
         {
@@ -151,12 +156,6 @@ public class DogCtrl : MonoBehaviour
 
         if (anim != null) anim.SetBool("isWalk", !stopped);
 
-        if (stopped)
-        {
-            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
-            return;
-        }
-
         Vector3 origin = transform.position + (Vector3)coll.offset;
         float rayDist = coll.radius + 1.5f;
 
@@ -170,8 +169,20 @@ public class DogCtrl : MonoBehaviour
             origin, -transform.right, wallDist + coll.radius,
             LayerMask.GetMask("Ground"));
 
+        coll.sharedMaterial = stopped ? stoppedMat : movingMat;
+
+        if (stopped)
+        {
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            return;
+        }
+
         if ((slopeForward || slopeBack) && rb.linearVelocity.y <= 0f)
-            rb.linearVelocity = new Vector2(-transform.right.x * idleSpeed, rb.linearVelocity.y);
+        {
+            bool goingUphill = slopeForward && slopeBack && slopeForward.distance < slopeBack.distance;
+            float currentSpeed = goingUphill ? idleSlopeSpeed : idleSpeed;
+            rb.linearVelocity = new Vector2(-transform.right.x * currentSpeed, rb.linearVelocity.y);
+        }
 
         if (!slopeForward || wallHit)
         {
@@ -262,6 +273,7 @@ public class DogCtrl : MonoBehaviour
     IEnumerator ReturnToIdleRoutine()
     {
         state = DogState.Returning;
+        if (stoppedMat != null) coll.sharedMaterial = stoppedMat;
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         yield return new WaitForSeconds(1f);
         state = DogState.Idle;
