@@ -192,14 +192,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d1c23377c69f461cab0574aaa0d0fc2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DogCtrl
-  noticeRange: 8
+  noticeRange: 12
   idleSpeed: 1.5
   wallDist: 0.5
   chaseSpeed: 4
-  chaseRange: 10
+  chaseRange: 14
   cliffStopTime: 0.5
-  cliffJumpForceY: 12
-  cliffJumpForceX: 7
+  cliffJumpForceY: 15
+  cliffJumpForceX: 10
   bouncePower: 5
   isIdle: 1
   isNotice: 0
