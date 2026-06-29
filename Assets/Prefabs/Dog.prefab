@@ -196,10 +196,11 @@ MonoBehaviour:
   idleSpeed: 1.5
   wallDist: 0.5
   chaseSpeed: 4
+  chaseRange: 10
   cliffStopTime: 0.5
-  cliffJumpForceY: 10
-  cliffJumpForceX: 5
-  bouncePower: 3
+  cliffJumpForceY: 12
+  cliffJumpForceX: 7
+  bouncePower: 5
   isIdle: 1
   isNotice: 0
   isChase: 0

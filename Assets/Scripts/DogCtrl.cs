@@ -17,6 +17,7 @@ public class DogCtrl : MonoBehaviour
 
     [Header("Chase設定")]
     public float chaseSpeed = 4f;
+    public float chaseRange = 10f;
     public float cliffStopTime = 0.5f;
     public float cliffJumpForceY = 10f;
     public float cliffJumpForceX = 5f;
@@ -215,17 +216,17 @@ public class DogCtrl : MonoBehaviour
         {
             yield return new WaitUntil(IsGrounded);
             rb.linearVelocity = new Vector2(0f, bouncePower);
-            yield return null;                        // 1フレーム待って地面から浮く
-            yield return new WaitUntil(IsGrounded);
+            yield return new WaitUntil(() => !IsGrounded()); // 地面から離れるまで待つ
+            yield return new WaitUntil(IsGrounded);          // 着地まで待つ
             if (i < 1) yield return new WaitForSeconds(0.1f);
         }
 
         // Update が NoticeEnter を監視しているので、ここに到達するのは
         // プレイヤーが範囲内にいる場合のみ（範囲外なら TransitionTo(Returning) 済み）
-        if (isNotice)
+        if (Vector3.Distance(transform.position, player.position) < chaseRange)
             state = DogState.Chase;
         else
-            StartCoroutine(ReturnToIdleRoutine());//NoticeRoutine実行中にプレイヤが範囲内から逃れた時にDogは見失い、またIdleに戻る
+            StartCoroutine(ReturnToIdleRoutine());
     }
 
     // -------------------------------------------------------
