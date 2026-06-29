@@ -40,6 +40,8 @@ public class DogCtrl : MonoBehaviour
     const float IDLE_WALK_TIME = 3f;
     const float IDLE_STOP_TIME = 2f;
 
+    bool isSlope = false;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -236,19 +238,20 @@ public class DogCtrl : MonoBehaviour
     {
         yield return new WaitForSeconds(cliffStopTime);
 
-        isCliffStop = false;
         state = DogState.Jumping;
+        if (anim != null)
+        {
+            anim.SetBool("isCliffStop", false);
+            anim.SetBool("isJump", true);
+        }
         float dir = -transform.right.x;
         rb.linearVelocity = new Vector2(dir * cliffJumpForceX, cliffJumpForceY);
 
-        yield return null;                           // 1フレーム待って地面から浮く
-        yield return new WaitUntil(IsGrounded);
+        yield return new WaitUntil(() => !IsGrounded()); // 地面から離れるまで待つ
+        yield return new WaitUntil(IsGrounded);          // 着地まで待つ
 
         if (isNotice)
-        {
-            isJump = false;
             state = DogState.Chase;
-        }
         else
             StartCoroutine(ReturnToIdleRoutine());
     }
