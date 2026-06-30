@@ -14,6 +14,7 @@
 | Frog | 30ユニット | 30ユニット |
 | Eagle | 30ユニット | 50ユニット |
 | Bat | 30ユニット | 30ユニット |
+| Dog | 30ユニット | 30ユニット |
 
 ---
 
@@ -101,3 +102,60 @@
 - 攻撃中：フライアニメーション
 
 ![Batの行動](Movies/BatBehavior.gif)
+
+---
+
+## Dog（犬）
+
+### 概要
+地上をパトロールし、プレイヤーを発見すると追いかける敵。崖に差し掛かるとジャンプして乗り越える。
+
+### 内部状態
+
+| 状態 | 説明 |
+|------|------|
+| Idle | 左右にパトロール。崖・壁を検知して折り返す |
+| NoticeEnter | プレイヤー発見演出。その場で2回バウンスする |
+| Chase | プレイヤーを追いかける |
+| CliffStop | 崖端で一時停止する |
+| Jumping | 崖を飛び越えるジャンプ中 |
+| Returning | プレイヤーを見失い、1秒静止してIdleへ戻る |
+
+### 行動：Idle（パトロール）
+- 3秒歩いて2秒止まるサイクルを繰り返す
+- 以下のいずれかの条件で方向転換する
+  - 進行方向の地面がなくなった（崖端を検知）
+  - 進行方向に壁がある（壁を検知）
+- 坂道を登っているときは `idleSlopeSpeed` を適用し、通常より速く移動する
+- 停止中・Returning中は PhysicsMaterial2D（MaxFriction）で坂道のずり落ちを防止する
+- 移動中は NoFriction マテリアルに切り替えてスムーズに歩く
+
+### 行動：NoticeEnter（発見演出）
+- プレイヤーが `noticeRange` 以内に入ると遷移する
+- その場で垂直に2回バウンスする
+- バウンス完了後、プレイヤーが `chaseRange` 以内にいればChaseへ遷移する
+- バウンス中にプレイヤーが `noticeRange` の外に出た場合はReturningへ遷移する
+
+### 行動：Chase（追跡）
+- 常にプレイヤーの方向を向き、追いかける
+- 前方に地面がなくなった（崖端）かつ接地中なら CliffStop へ遷移する
+- プレイヤーが `noticeRange` の外に出たら Returning へ遷移する
+
+### 行動：CliffStop → Jumping（崖越えジャンプ）
+- CliffStop で `cliffStopTime` 秒間静止する
+- その後、進行方向へ斜め上にジャンプして崖を飛び越える（`cliffJumpForceX`・`cliffJumpForceY` で制御）
+- 着地後、プレイヤーが範囲内なら Chase、範囲外なら Returning へ遷移する
+
+### 主要パラメータ
+
+| パラメータ | デフォルト値 | 説明 |
+|-----------|------------|------|
+| noticeRange | 12 | プレイヤーを発見する距離 |
+| chaseRange | 14 | バウンス後にChaseへ移行する距離 |
+| idleSpeed | 1.5 | パトロール時の通常速度 |
+| idleSlopeSpeed | 3 | 坂を登るときの速度 |
+| chaseSpeed | 4 | 追跡時の速度 |
+| bouncePower | 5 | 発見演出のバウンス力 |
+| cliffStopTime | 0.5 | 崖端での停止時間（秒） |
+| cliffJumpForceX | 7 | 崖越えジャンプの水平力 |
+| cliffJumpForceY | 12 | 崖越えジャンプの垂直力 |
