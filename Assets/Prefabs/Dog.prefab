@@ -194,9 +194,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DogCtrl
   noticeRange: 12
   idleSpeed: 1.5
+  idleSlopeSpeed: 3
   wallDist: 0.5
   chaseSpeed: 4
-  chaseRange: 14
+  chaseRange: 15
   cliffStopTime: 0.5
   cliffJumpForceY: 15
   cliffJumpForceX: 10
