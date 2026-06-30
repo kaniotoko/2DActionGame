@@ -159,3 +159,9 @@
 | cliffStopTime | 0.5 | 崖端での停止時間（秒） |
 | cliffJumpForceX | 7 | 崖越えジャンプの水平力 |
 | cliffJumpForceY | 12 | 崖越えジャンプの垂直力 |
+
+![DogのIdle行動](Movies/DogIdleBehavior.gif)
+
+![DogのChase行動](Movies/DogChaseBehavior.gif)
+
+![DogのJump行動](Movies/DogJumpBehavior.gif)
