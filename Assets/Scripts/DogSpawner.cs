@@ -4,7 +4,7 @@ public class DogSpawner : MonoBehaviour
 {
     public GameObject dogPrefab;
     private float spawnDistance = 30f;
-    private float despawnDistance = 30f;
+    private float despawnDistance = 50f;
     private bool hasSpawned = false;
     public Transform player;
     private GameObject spawnedDog;
