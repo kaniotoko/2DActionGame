@@ -2153,7 +2153,7 @@ MonoBehaviour:
   - {fileID: 8662722095869232006, guid: 5e8d70ddec1f74af1a4d5a9b3f15a49a, type: 3}
   - {fileID: 6009378836666534586, guid: fb06de715c7f74c94a352a0796b312cb, type: 3}
   - {fileID: 5353670121157148326, guid: 0e51fa9bdb5d642ce97b21006212cbb0, type: 3}
-  stageShowBG: 010101010100000000
+  stageShowBG: 010101010101010000
   stageNumber: 0
   gameOverView: {fileID: 3887645}
   gameClearView: {fileID: 1021591601}
