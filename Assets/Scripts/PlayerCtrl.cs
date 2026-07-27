@@ -8,7 +8,7 @@ public class PlayerCrtl : MonoBehaviour
     CircleCollider2D coll;
     Animator anim;
     bool isJump = false;
-    bool isSlope = false;
+    bool wasFreezeY = false;
     bool isDead = false;
     public float speed;
     public float smooth;
@@ -49,17 +49,22 @@ public class PlayerCrtl : MonoBehaviour
         }
 
         //RaycastHit2D groundHit = Physics2D.Raycast(transform.position + (Vector3)coll.offset, Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
-        RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
-        RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius / 2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius/2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        RaycastHit2D slopeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius/2), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+
+        //左右ギリギリの位置でも接地判定ができるようにするため、Raycastを2本飛ばす
+        RaycastHit2D edgeHitForward = Physics2D.Raycast(transform.position + (Vector3)coll.offset + (transform.right * coll.radius), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
+        RaycastHit2D edgeHitBack = Physics2D.Raycast(transform.position + (Vector3)coll.offset - (transform.right * coll.radius), Vector2.down, coll.radius + 0.1f, LayerMask.GetMask("Ground"));
 
         //Debug.Log((bool)slopeHitForward + "," + (bool)slopeHitBack/* + "," + (bool)groundHit*/);
 
-        if(rb.linearVelocityY <= 0)
-        {
-            anim.SetBool("isFall", true);
-        }
+        //片方だけヒット＝足元の地面が途切れている状態。斜面か崖ハジのどちらかにいる
+        bool onSlope = slopeHitForward ^ slopeHitBack;
+        bool onEdge = edgeHitForward ^ edgeHitBack;
+        //4本のうち1本でも当たっていれば接地とみなす
+        bool isGrounded = slopeHitForward || slopeHitBack || edgeHitForward || edgeHitBack;
 
-        if(slopeHitForward || slopeHitBack)
+        if(isGrounded)
         {
             anim.SetBool("isFall", false);
             if(rb.linearVelocityY <= 0)
@@ -67,7 +72,7 @@ public class PlayerCrtl : MonoBehaviour
                 isJump = false;
                 anim.SetBool("isJump", false);
             }
-            if(Keyboard.current.spaceKey.wasPressedThisFrame) 
+            if(Keyboard.current.spaceKey.wasPressedThisFrame)
             {
                 isJump = true;
                 anim.SetBool("isJump", true);
@@ -76,27 +81,24 @@ public class PlayerCrtl : MonoBehaviour
                 jumpSE.Play();
             }
         }
+        else if(rb.linearVelocityY <= 0)
+        {
+            anim.SetBool("isFall", true);
+        }
 
-        if(slopeHitForward ^ slopeHitBack)
+        //斜面・崖ハジで静止している間だけY座標を固定してずり落ちを防ぐ。
+        //条件が外れたフレームでは必ずelse側が代入されるので、空中に固定が残ることはない
+        bool freezeY = isGrounded && (onSlope || onEdge) && x == 0 && !isJump;
+        rb.constraints = freezeY
+            ? RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY
+            : RigidbodyConstraints2D.FreezeRotation;
+
+        //固定を解除した瞬間は地面に押し付けて、斜面の途中で浮き上がるのを防ぐ
+        if(wasFreezeY && !freezeY && !isJump)
         {
-            isSlope = true;
-            if(x == 0 && !isJump)
-            {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
-            }
-            else
-            {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-            }
+            rb.linearVelocityY = -3;
         }
-        else
-        {
-            if(isSlope && !isJump)
-            {
-                rb.linearVelocityY = -3;
-            }
-            isSlope = false;
-        }
+        wasFreezeY = freezeY;
 
         if(transform.position.y < -11f && !isDead)
         {
