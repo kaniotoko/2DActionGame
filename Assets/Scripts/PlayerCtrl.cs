@@ -118,6 +118,13 @@ public class PlayerCrtl : MonoBehaviour
 
     void OnCollisionEnter2D(Collision2D other)
     {
+        //ボスは通常の敵と違い踏んでも倒せない。気絶中のみ踏みつけで攻撃できるようにする（③で実装）
+        if(other.gameObject.layer == LayerMask.NameToLayer("Boss"))
+        {
+            mainManager.GameOver();
+            return;
+        }
+
         if(other.gameObject.layer == LayerMask.NameToLayer("Enemy"))
         {
             if(other.transform.position.y < transform.position.y - coll.radius)
