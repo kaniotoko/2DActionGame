@@ -168,7 +168,7 @@ Animator:
   m_GameObject: {fileID: 5193841615416030411}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 965e0f314868db7459bd29b788b20463, type: 2}
+  m_Controller: {fileID: 9100000, guid: 5ee9308f8e8d74fbfbe4009f4c8dbd36, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -192,3 +192,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f1a9abb5901842de9db493e3b18bfd2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossCtrl
+  smallJumpPowerY: 12
+  smallJumpPowerX: 5
+  smallJumpCount: 2
+  smallJumpInterval: 0.3
+  keepDistance: 4
+  bigJumpPowerY: 24
+  chaseSpeedX: 12
+  slamSpeed: 30
+  slamDelay: 0.2
+  landRecoverTime: 0.8
+  state: 0
