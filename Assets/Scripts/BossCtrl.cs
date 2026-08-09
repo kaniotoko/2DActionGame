@@ -27,7 +27,9 @@ public class BossCtrl : MonoBehaviour
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
-    public enum BossState { Idle, SmallJump, BigJump, Slam, Land }
+    // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
+    // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
+    public enum BossState { Idle, SmallJump, BigJump, Slam }
 
     float defaultGravityScale;
 
@@ -124,8 +126,8 @@ public class BossCtrl : MonoBehaviour
         rb.linearVelocity = new Vector2(0f, -slamSpeed);
         yield return WaitForLanding();
 
-        // 着地
-        state = BossState.Land;
+        // 着地。ジャンプも落下もしていないので Idle に戻す（landRecoverTime の硬直中も Idle）
+        state = BossState.Idle;
         rb.linearVelocity = Vector2.zero;
 
         // TODO: ここで衝撃波（Shockwave）を左右に発生させる
@@ -159,13 +161,15 @@ public class BossCtrl : MonoBehaviour
 
     // -------------------------------------------------------
     // Animator へ state を反映する
-    // 現状のコントローラは isJump / isFall の2つだけ持っている
+    // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
+    // 今回のコミットでは isIdle のみ実装している
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
         if (anim == null) return;
 
-        anim.SetBool("isJump", rb.linearVelocity.y > 0f);
-        anim.SetBool("isFall", rb.linearVelocity.y < 0f);
+        // Idle：ジャンプモーションも落下モーションもしていない状態
+        // 小ジャンプの着地ごと、および大ジャンプ後の着地硬直中もここに入る
+        anim.SetBool("isIdle", state == BossState.Idle);
     }
 }
