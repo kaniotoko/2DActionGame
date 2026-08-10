@@ -19,6 +19,8 @@ public class BossCtrl : MonoBehaviour
     public float chaseSpeedX = 30f;       // 上昇中にプレイヤーの真上へ回り込む速さ
     public float slamSpeed = 30f;         // 頂点で落下地点を確定させたあとの急降下速度
     public float slamDelay = 0.2f;        // 頂点で落下地点を確定してから急降下するまでの溜め
+    public float preSlamLiftSpeed = 6f;   // 急降下の前動作：真上へ持ち上げる速さ
+    public float preSlamLiftTime = 0.15f; // 急降下の前動作：持ち上げ続ける時間
 
     [Header("着地後の設定")]
     public float landRecoverTime = 0.8f;  // 着地してから次の行動に移るまでの硬直
@@ -112,14 +114,19 @@ public class BossCtrl : MonoBehaviour
         }
 
         // 頂点：ここで落下地点を確定させる（以降プレイヤーを追わない）
-        // 滞空中もまだ BigJump のまま。落下に転じた時点で Slam へ移す
+        // 滞空中もまだ BigJump のまま。落下に転じた時点で Fall1 へ移す
         // 落下前の溜め。空中で静止させてプレイヤーに回避の猶予を与える
         rb.linearVelocity = Vector2.zero;
         rb.gravityScale = 0f;
         yield return new WaitForSeconds(slamDelay);
 
-        // 急降下。ここからが落下状態
+        // 前動作：少しだけ真上へ持ち上げてから落とす
+        // 重力を切ったままなので等速で上がり、上昇量は速さ×時間で決まる
         state = BossState.Fall1;
+        rb.linearVelocity = new Vector2(0f, preSlamLiftSpeed);
+        yield return new WaitForSeconds(preSlamLiftTime);
+
+        // 急降下
         rb.gravityScale = defaultGravityScale;
         rb.linearVelocity = new Vector2(0f, -slamSpeed);
         yield return WaitForLanding();
