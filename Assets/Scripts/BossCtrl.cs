@@ -9,17 +9,18 @@ public class BossCtrl : MonoBehaviour
     Animator anim;
 
     [Header("小ジャンプ設定")]
-    public float smallJumpPowerY = 12f;   // 小ジャンプの上向きの初速
+    public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
     public float smallJumpPowerX = 5f;    // 小ジャンプでプレイヤー方向へ進む速さ
     public int smallJumpCount = 2;        // 大ジャンプに移る前に繰り返す回数
-    public float smallJumpInterval = 0.3f;// 着地してから次の小ジャンプまでの待ち時間
-    public float keepDistance = 4f;       // これより近ければ横移動せずその場で跳ねる
+    public float smallJumpInterval = 0.5f;// 着地してから次の小ジャンプまでの待ち時間
 
     [Header("大ジャンプ設定")]
-    public float bigJumpPowerY = 24f;     // 大ジャンプの上向きの初速
-    public float chaseSpeedX = 12f;       // 上昇中にプレイヤーの真上へ回り込む速さ
+    public float bigJumpPowerY = 22f;     // 大ジャンプの上向きの初速
+    public float chaseSpeedX = 30f;       // 上昇中にプレイヤーの真上へ回り込む速さ
     public float slamSpeed = 30f;         // 頂点で落下地点を確定させたあとの急降下速度
     public float slamDelay = 0.2f;        // 頂点で落下地点を確定してから急降下するまでの溜め
+    public float preSlamLiftSpeed = 6f;   // 急降下の前動作：真上へ持ち上げる速さ
+    public float preSlamLiftTime = 0.15f; // 急降下の前動作：持ち上げ続ける時間
 
     [Header("着地後の設定")]
     public float landRecoverTime = 0.8f;  // 着地してから次の行動に移るまでの硬直
@@ -27,7 +28,9 @@ public class BossCtrl : MonoBehaviour
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
-    public enum BossState { Idle, SmallJump, BigJump, Slam, Land }
+    // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
+    // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
+    public enum BossState { Idle, SmallJump, BigJump, Fall1 }
 
     float defaultGravityScale;
 
@@ -37,8 +40,8 @@ public class BossCtrl : MonoBehaviour
         coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
         player = GameObject.Find("Player").transform;
-
         defaultGravityScale = rb.gravityScale;
+
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         StartCoroutine(PatternA());
     }
@@ -72,17 +75,16 @@ public class BossCtrl : MonoBehaviour
 
     // -------------------------------------------------------
     // 小ジャンプ：プレイヤーの方向へ跳ねて距離を詰める
-    // keepDistance より近い場合は横に進まず、その場で跳ねるだけにする
+    // 距離に関わらず必ずプレイヤー側へ進む
     // -------------------------------------------------------
     IEnumerator SmallJumpRoutine()
     {
         state = BossState.SmallJump;
 
+        // プレイヤーが右にいれば +1、左にいれば -1
         float dir = Mathf.Sign(player.position.x - transform.position.x);
-        bool tooClose = Mathf.Abs(player.position.x - transform.position.x) < keepDistance;
-        float velX = tooClose ? 0f : dir * smallJumpPowerX;
 
-        rb.linearVelocity = new Vector2(velX, smallJumpPowerY);
+        rb.linearVelocity = new Vector2(dir * smallJumpPowerX, smallJumpPowerY);
 
         yield return WaitForLanding();
 
@@ -112,20 +114,25 @@ public class BossCtrl : MonoBehaviour
         }
 
         // 頂点：ここで落下地点を確定させる（以降プレイヤーを追わない）
-        state = BossState.Slam;
-
+        // 滞空中もまだ BigJump のまま。落下に転じた時点で Fall1 へ移す
         // 落下前の溜め。空中で静止させてプレイヤーに回避の猶予を与える
         rb.linearVelocity = Vector2.zero;
         rb.gravityScale = 0f;
         yield return new WaitForSeconds(slamDelay);
+
+        // 前動作：少しだけ真上へ持ち上げてから落とす
+        // 重力を切ったままなので等速で上がり、上昇量は速さ×時間で決まる
+        state = BossState.Fall1;
+        rb.linearVelocity = new Vector2(0f, preSlamLiftSpeed);
+        yield return new WaitForSeconds(preSlamLiftTime);
 
         // 急降下
         rb.gravityScale = defaultGravityScale;
         rb.linearVelocity = new Vector2(0f, -slamSpeed);
         yield return WaitForLanding();
 
-        // 着地
-        state = BossState.Land;
+        // 着地。ジャンプも落下もしていないので Idle に戻す（landRecoverTime の硬直中も Idle）
+        state = BossState.Idle;
         rb.linearVelocity = Vector2.zero;
 
         // TODO: ここで衝撃波（Shockwave）を左右に発生させる
@@ -152,20 +159,31 @@ public class BossCtrl : MonoBehaviour
     void FacePlayer()
     {
         if (player.position.x > transform.position.x)
-            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-        else
             transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        else
+            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
     }
 
     // -------------------------------------------------------
     // Animator へ state を反映する
-    // 現状のコントローラは isJump / isFall の2つだけ持っている
+    // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
         if (anim == null) return;
 
-        anim.SetBool("isJump", rb.linearVelocity.y > 0f);
-        anim.SetBool("isFall", rb.linearVelocity.y < 0f);
+        // Idle：ジャンプモーションも落下モーションもしていない状態
+        // 小ジャンプの着地ごと、および大ジャンプ後の着地硬直中もここに入る
+        anim.SetBool("isIdle", state == BossState.Idle);
+
+        // SmallJump：跳び上がってから着地するまで。着地した瞬間に Idle へ戻る
+        anim.SetBool("isSJump", state == BossState.SmallJump);
+
+        // BigJump：跳び上がってプレイヤーの真上へ回り込み、滞空し終えるまで
+        // 落下に転じた時点で Fall1 へ移るので、ここで false になる
+        anim.SetBool("isBJump", state == BossState.BigJump);
+
+        // Fall1：滞空が終わってから着地するまでの落下中
+        anim.SetBool("isFall1", state == BossState.Fall1);
     }
 }
