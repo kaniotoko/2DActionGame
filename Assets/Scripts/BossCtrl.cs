@@ -9,14 +9,14 @@ public class BossCtrl : MonoBehaviour
     Animator anim;
 
     [Header("小ジャンプ設定")]
-    public float smallJumpPowerY = 12f;   // 小ジャンプの上向きの初速
+    public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
     public float smallJumpPowerX = 5f;    // 小ジャンプでプレイヤー方向へ進む速さ
     public int smallJumpCount = 2;        // 大ジャンプに移る前に繰り返す回数
     public float smallJumpInterval = 0.5f;// 着地してから次の小ジャンプまでの待ち時間
 
     [Header("大ジャンプ設定")]
-    public float bigJumpPowerY = 24f;     // 大ジャンプの上向きの初速
-    public float chaseSpeedX = 12f;       // 上昇中にプレイヤーの真上へ回り込む速さ
+    public float bigJumpPowerY = 22f;     // 大ジャンプの上向きの初速
+    public float chaseSpeedX = 30f;       // 上昇中にプレイヤーの真上へ回り込む速さ
     public float slamSpeed = 30f;         // 頂点で落下地点を確定させたあとの急降下速度
     public float slamDelay = 0.2f;        // 頂点で落下地点を確定してから急降下するまでの溜め
 
@@ -38,8 +38,8 @@ public class BossCtrl : MonoBehaviour
         coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
         player = GameObject.Find("Player").transform;
-
         defaultGravityScale = rb.gravityScale;
+
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         StartCoroutine(PatternA());
     }
