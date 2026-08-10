@@ -28,7 +28,7 @@ public class BossCtrl : MonoBehaviour
 
     // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
     // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
-    public enum BossState { Idle, SmallJump, BigJump, Slam }
+    public enum BossState { Idle, SmallJump, BigJump, Fall1 }
 
     float defaultGravityScale;
 
@@ -119,7 +119,7 @@ public class BossCtrl : MonoBehaviour
         yield return new WaitForSeconds(slamDelay);
 
         // 急降下。ここからが落下状態
-        state = BossState.Slam;
+        state = BossState.Fall1;
         rb.gravityScale = defaultGravityScale;
         rb.linearVelocity = new Vector2(0f, -slamSpeed);
         yield return WaitForLanding();
@@ -160,7 +160,6 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     // Animator へ state を反映する
     // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
-    // 今回のコミットでは isIdle / isSJump / isBJump まで実装している
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
@@ -174,7 +173,10 @@ public class BossCtrl : MonoBehaviour
         anim.SetBool("isSJump", state == BossState.SmallJump);
 
         // BigJump：跳び上がってプレイヤーの真上へ回り込み、滞空し終えるまで
-        // 落下に転じた時点で Slam へ移るので、ここで false になる
+        // 落下に転じた時点で Fall1 へ移るので、ここで false になる
         anim.SetBool("isBJump", state == BossState.BigJump);
+
+        // Fall1：滞空が終わってから着地するまでの落下中
+        anim.SetBool("isFall1", state == BossState.Fall1);
     }
 }
