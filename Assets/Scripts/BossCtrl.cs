@@ -112,14 +112,14 @@ public class BossCtrl : MonoBehaviour
         }
 
         // 頂点：ここで落下地点を確定させる（以降プレイヤーを追わない）
-        state = BossState.Slam;
-
+        // 滞空中もまだ BigJump のまま。落下に転じた時点で Slam へ移す
         // 落下前の溜め。空中で静止させてプレイヤーに回避の猶予を与える
         rb.linearVelocity = Vector2.zero;
         rb.gravityScale = 0f;
         yield return new WaitForSeconds(slamDelay);
 
-        // 急降下
+        // 急降下。ここからが落下状態
+        state = BossState.Slam;
         rb.gravityScale = defaultGravityScale;
         rb.linearVelocity = new Vector2(0f, -slamSpeed);
         yield return WaitForLanding();
@@ -160,7 +160,7 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     // Animator へ state を反映する
     // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
-    // 今回のコミットでは isIdle / isSJump まで実装している
+    // 今回のコミットでは isIdle / isSJump / isBJump まで実装している
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
@@ -172,5 +172,9 @@ public class BossCtrl : MonoBehaviour
 
         // SmallJump：跳び上がってから着地するまで。着地した瞬間に Idle へ戻る
         anim.SetBool("isSJump", state == BossState.SmallJump);
+
+        // BigJump：跳び上がってプレイヤーの真上へ回り込み、滞空し終えるまで
+        // 落下に転じた時点で Slam へ移るので、ここで false になる
+        anim.SetBool("isBJump", state == BossState.BigJump);
     }
 }
