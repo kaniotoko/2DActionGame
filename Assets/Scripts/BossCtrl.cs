@@ -12,8 +12,7 @@ public class BossCtrl : MonoBehaviour
     public float smallJumpPowerY = 12f;   // 小ジャンプの上向きの初速
     public float smallJumpPowerX = 5f;    // 小ジャンプでプレイヤー方向へ進む速さ
     public int smallJumpCount = 2;        // 大ジャンプに移る前に繰り返す回数
-    public float smallJumpInterval = 0.3f;// 着地してから次の小ジャンプまでの待ち時間
-    public float keepDistance = 4f;       // これより近ければ横移動せずその場で跳ねる
+    public float smallJumpInterval = 0.5f;// 着地してから次の小ジャンプまでの待ち時間
 
     [Header("大ジャンプ設定")]
     public float bigJumpPowerY = 24f;     // 大ジャンプの上向きの初速
@@ -74,17 +73,16 @@ public class BossCtrl : MonoBehaviour
 
     // -------------------------------------------------------
     // 小ジャンプ：プレイヤーの方向へ跳ねて距離を詰める
-    // keepDistance より近い場合は横に進まず、その場で跳ねるだけにする
+    // 距離に関わらず必ずプレイヤー側へ進む
     // -------------------------------------------------------
     IEnumerator SmallJumpRoutine()
     {
         state = BossState.SmallJump;
 
+        // プレイヤーが右にいれば +1、左にいれば -1
         float dir = Mathf.Sign(player.position.x - transform.position.x);
-        bool tooClose = Mathf.Abs(player.position.x - transform.position.x) < keepDistance;
-        float velX = tooClose ? 0f : dir * smallJumpPowerX;
 
-        rb.linearVelocity = new Vector2(velX, smallJumpPowerY);
+        rb.linearVelocity = new Vector2(dir * smallJumpPowerX, smallJumpPowerY);
 
         yield return WaitForLanding();
 
@@ -162,7 +160,7 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     // Animator へ state を反映する
     // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
-    // 今回のコミットでは isIdle のみ実装している
+    // 今回のコミットでは isIdle / isSJump まで実装している
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
@@ -171,5 +169,8 @@ public class BossCtrl : MonoBehaviour
         // Idle：ジャンプモーションも落下モーションもしていない状態
         // 小ジャンプの着地ごと、および大ジャンプ後の着地硬直中もここに入る
         anim.SetBool("isIdle", state == BossState.Idle);
+
+        // SmallJump：跳び上がってから着地するまで。着地した瞬間に Idle へ戻る
+        anim.SetBool("isSJump", state == BossState.SmallJump);
     }
 }
