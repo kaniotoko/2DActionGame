@@ -152,9 +152,9 @@ public class BossCtrl : MonoBehaviour
     void FacePlayer()
     {
         if (player.position.x > transform.position.x)
-            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-        else
             transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        else
+            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
     }
 
     // -------------------------------------------------------
