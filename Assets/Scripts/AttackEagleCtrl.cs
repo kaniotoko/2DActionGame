@@ -49,6 +49,18 @@ public class AttackEagleCtrl : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // 壁や地形にぶつかったら消える
+    // 壁はGroundレイヤーなので、プレイヤー（接触するとゲームオーバー）とは区別できる
+    // -------------------------------------------------------
+    void OnCollisionEnter2D(Collision2D other)
+    {
+        if (other.gameObject.layer == LayerMask.NameToLayer("Ground"))
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    // -------------------------------------------------------
     // Eagleのスプライトは回転0で左向きなので、右へ飛ぶときだけ反転させる
     // -------------------------------------------------------
     void FaceMoveDirection()
