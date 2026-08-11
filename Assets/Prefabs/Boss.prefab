@@ -202,4 +202,6 @@ MonoBehaviour:
   slamSpeed: 30
   slamDelay: 0.2
   landRecoverTime: 0.8
+  attackEaglePrefab: {fileID: 6084587470587900296, guid: f9d984bf67d5f443ab0c3fbc0013a68a,
+    type: 3}
   state: 0

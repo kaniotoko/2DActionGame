@@ -25,6 +25,46 @@ public class BossCtrl : MonoBehaviour
     [Header("着地後の設定")]
     public float landRecoverTime = 0.8f;  // 着地してから次の行動に移るまでの硬直
 
+    [Header("行動パターン②：端への移動")]
+    public int patternARepeat = 2;        // 行動②へ移る前に行動①を繰り返す回数
+    public float stageLeftX = -11.2f;      // ステージ左端。Bossがここへ移動して構える
+    public float stageRightX = 58.6f;      // ステージ右端。Bossがここへ移動して構える
+    public float moveRiseHeight = 12f;     // 端へ移動する前に真上へ上がる高さ
+    public float moveRiseSpeed = 20f;      // 真上へ上がるときの速さ
+    public float moveHorizontalSpeed = 30f;// 上空を水平移動するときの速さ
+    public float moveFallSpeed = 20f;      // 目標のX座標に着いてから下降するときの速さ
+
+    [Header("行動パターン②：イーグル攻撃")]
+    public GameObject attackEaglePrefab;   // AttackEagle.prefab をセットする
+    public float eagleSpeed = 12f;         // イーグルがステージを横切る速さ
+    public float eagleWaveInterval = 1.2f; // 波と波の間隔
+    public float eagleWaveEndWait = 1f;    // 最後の波を撃ってから次の行動に移るまでの待ち
+    public float eagleSpawnOffset = 1f;    // Bossのコライダーの端から、進行方向へどれだけ離して生成するか
+    public float eagleDespawnMargin = 5f;  // 反対側の端からどれだけ外側まで飛ばしてから消すか
+
+    // 下から順に並べた高さ。eagleWaves の番号はこの配列の添字。
+    // 値は「地面から、イーグルのコライダーの底までの高さ」。
+    //   地面 ＝ Bossのコライダーの底（Bossは端の地面に立っているのでこれが地面の高さになる）
+    // 0より大きくしておけば地面に埋まらない。
+    // AttackEagleの大きさを1マス（Gridのセルサイズ＝1 unit）とみなし、1段ごとに1 unitずつ上げている
+    public float[] eagleHeights = { 0.2f, 1.2f, 2.2f, 3.2f };
+
+    // 飛ばす順番。下から 1-2、3-4、1-2（添字なので 0-1、2-3、0-1）
+    public EagleWave[] eagleWaves =
+    {
+        new EagleWave { lowerIndex = 0, upperIndex = 1 },
+        new EagleWave { lowerIndex = 2, upperIndex = 3 },
+        new EagleWave { lowerIndex = 0, upperIndex = 1 },
+    };
+
+    // 1波ぶん＝縦に2体並んだイーグルの高さの組み合わせ
+    [System.Serializable]
+    public class EagleWave
+    {
+        public int lowerIndex; // 下側のイーグルの高さ番号（0が一番下）
+        public int upperIndex; // 上側のイーグルの高さ番号
+    }
+
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
@@ -43,7 +83,7 @@ public class BossCtrl : MonoBehaviour
         defaultGravityScale = rb.gravityScale;
 
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        StartCoroutine(PatternA());
+        StartCoroutine(BossRoutine());
     }
 
     void Update()
@@ -55,22 +95,145 @@ public class BossCtrl : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // 行動パターン①
+    // Bossの行動全体の流れ
+    // 行動①を patternARepeat 回 → 行動② → 最初に戻る
+    // -------------------------------------------------------
+    IEnumerator BossRoutine()
+    {
+        while (true)
+        {
+            for (int i = 0; i < patternARepeat; i++)
+            {
+                yield return PatternA();
+            }
+
+            yield return PatternB();
+        }
+    }
+
+    // -------------------------------------------------------
+    // 行動パターン①（1サイクル分）
     // 小ジャンプでプレイヤーに近づく → 大ジャンプでプレイヤーの真上へ → 急降下して着地
     // -------------------------------------------------------
     IEnumerator PatternA()
     {
-        while (true)
+        for (int i = 0; i < smallJumpCount; i++)
         {
-            for (int i = 0; i < smallJumpCount; i++)
-            {
-                yield return SmallJumpRoutine();
-                yield return new WaitForSeconds(smallJumpInterval);
-            }
-
-            yield return BigJumpRoutine();
-            yield return new WaitForSeconds(landRecoverTime);
+            yield return SmallJumpRoutine();
+            yield return new WaitForSeconds(smallJumpInterval);
         }
+
+        yield return BigJumpRoutine();
+        yield return new WaitForSeconds(landRecoverTime);
+    }
+
+    // -------------------------------------------------------
+    // 行動パターン②（1サイクル分）
+    // 左端へ移動してイーグルを右向きに飛ばす → 右端へ移動して左向きに飛ばす
+    // -------------------------------------------------------
+    IEnumerator PatternB()
+    {
+        yield return MoveJumpRoutine(stageLeftX);
+        yield return new WaitForSeconds(landRecoverTime);
+
+        // 左端にいるので、Bossの右側から出して反対側（右端）へ横切らせる
+        yield return EagleWaveRoutine(stageRightX);
+
+        yield return MoveJumpRoutine(stageRightX);
+        yield return new WaitForSeconds(landRecoverTime);
+
+        // 右端にいるので、今度はBossの左側から出して左端へ横切らせる
+        yield return EagleWaveRoutine(stageLeftX);
+    }
+
+    // -------------------------------------------------------
+    // 端への移動：真上へ上がる → 上空を目標のX座標まで水平移動 → 下降して着地
+    // 重力を切って手動で動かすので、ステージ幅がどれだけ広くても必ず目標の位置に着地する
+    // ※行動②のアニメーションは未対応なので、ここでは state を Idle のままにしておく
+    // -------------------------------------------------------
+    IEnumerator MoveJumpRoutine(float targetX)
+    {
+        state = BossState.Idle;
+        rb.gravityScale = 0f;
+
+        // ① 真上へ上がる
+        float peakY = transform.position.y + moveRiseHeight;
+        rb.linearVelocity = new Vector2(0f, moveRiseSpeed);
+        yield return new WaitUntil(() => transform.position.y >= peakY);
+
+        // ② 上空を水平移動する。目標のX座標を通り過ぎたら止める
+        float dirX = targetX > transform.position.x ? 1f : -1f;
+        rb.linearVelocity = new Vector2(dirX * moveHorizontalSpeed, 0f);
+        yield return new WaitUntil(() => (targetX - transform.position.x) * dirX <= 0f);
+
+        // 通り過ぎたぶんのズレを消して、X座標をぴったり目標に合わせる
+        transform.position = new Vector3(targetX, transform.position.y, transform.position.z);
+
+        // ③ 下降して着地
+        rb.gravityScale = defaultGravityScale;
+        rb.linearVelocity = new Vector2(0f, -moveFallSpeed);
+        yield return WaitForLanding();
+
+        // 着地。イーグルを呼ぶ間はその場から動かない
+        rb.linearVelocity = Vector2.zero;
+    }
+
+    // -------------------------------------------------------
+    // イーグルの群れを飛ばす
+    // 1波につき縦に2体（eagleWaves で指定した高さの組み合わせ）を同時に出す
+    // towardX には反対側の端のX座標を渡す。飛ぶ向きはBossの現在位置との差から決めるので、
+    // stageLeftX / stageRightX にどちらの値が入っていても必ず反対側の端へ向かって飛ぶ
+    // -------------------------------------------------------
+    IEnumerator EagleWaveRoutine(float towardX)
+    {
+        state = BossState.Idle;
+
+        float dirX = towardX > transform.position.x ? 1f : -1f;
+
+        foreach (EagleWave wave in eagleWaves)
+        {
+            SpawnAttackEagle(wave.lowerIndex, dirX, towardX);
+            SpawnAttackEagle(wave.upperIndex, dirX, towardX);
+            yield return new WaitForSeconds(eagleWaveInterval);
+        }
+
+        yield return new WaitForSeconds(eagleWaveEndWait);
+    }
+
+    // -------------------------------------------------------
+    // 攻撃用イーグルを1体生成して撃ち出す
+    // heightIndex は eagleHeights の添字（0が一番下）
+    // -------------------------------------------------------
+    void SpawnAttackEagle(int heightIndex, float dirX, float towardX)
+    {
+        if (attackEaglePrefab == null || eagleHeights.Length == 0) return;
+
+        int index = Mathf.Clamp(heightIndex, 0, eagleHeights.Length - 1);
+
+        // Bossのコライダーの、進行方向側の端から eagleSpawnOffset だけ離した位置で生成する。
+        // 左端にいるとき（右へ飛ばすとき）はコライダーの右端の少しプラス側、
+        // 右端にいるとき（左へ飛ばすとき）はコライダーの左端の少しマイナス側になる
+        float spawnX = transform.position.x + coll.offset.x + dirX * (coll.radius + eagleSpawnOffset);
+        float despawnX = towardX + dirX * eagleDespawnMargin;
+
+        // Bossは端の地面に立っているので、Bossのコライダーの底がそのまま地面の高さになる。
+        // イーグルのコライダーの底をこの高さに合わせる
+        float bossBottomY = transform.position.y + coll.offset.y - coll.radius;
+        float targetBottomY = bossBottomY + eagleHeights[index];
+
+        // イーグルの位置から、そのコライダーの底までの距離（負の値）。
+        // 生成後の bounds は物理エンジンの同期待ちで正しい値が返らないことがあるため、
+        // プレハブのコライダー設定から直接求める
+        float bottomOffset = 0f;
+        CircleCollider2D prefabColl = attackEaglePrefab.GetComponent<CircleCollider2D>();
+        if (prefabColl != null) bottomOffset = prefabColl.offset.y - prefabColl.radius;
+
+        float spawnY = targetBottomY - bottomOffset;
+
+        GameObject eagle = Instantiate(attackEaglePrefab, new Vector3(spawnX, spawnY, 0f), Quaternion.identity);
+
+        AttackEagleCtrl ctrl = eagle.GetComponent<AttackEagleCtrl>();
+        if (ctrl != null) ctrl.Launch(dirX, eagleSpeed, despawnX);
     }
 
     // -------------------------------------------------------
