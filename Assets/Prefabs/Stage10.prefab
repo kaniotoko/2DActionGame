@@ -68574,11 +68574,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5125159859816222460, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 33.6
+      value: -11.8
       objectReference: {fileID: 0}
     - target: {fileID: 5125159859816222460, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 4.5
+      value: 3.7
       objectReference: {fileID: 0}
     - target: {fileID: 5125159859816222460, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: m_LocalPosition.z
@@ -68629,6 +68629,10 @@ PrefabInstance:
       value: 22
       objectReference: {fileID: 0}
     - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: moveRiseHeight
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: preSlamLiftTime
       value: 0.3
       objectReference: {fileID: 0}
@@ -68639,6 +68643,30 @@ PrefabInstance:
     - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: smallJumpPowerY
       value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: eagleHeights.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: 'eagleHeights.Array.data[0]'
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: 'eagleHeights.Array.data[1]'
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: 'eagleHeights.Array.data[2]'
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: 'eagleHeights.Array.data[3]'
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: 'eagleHeights.Array.data[4]'
+      value: -1.9
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

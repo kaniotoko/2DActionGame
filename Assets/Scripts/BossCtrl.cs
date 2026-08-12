@@ -70,7 +70,7 @@ public class BossCtrl : MonoBehaviour
 
     // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
     // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
-    public enum BossState { Idle, SmallJump, BigJump, Fall1 }
+    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump }
 
     float defaultGravityScale;
 
@@ -149,11 +149,11 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     // 端への移動：真上へ上がる → 上空を目標のX座標まで水平移動 → 下降して着地
     // 重力を切って手動で動かすので、ステージ幅がどれだけ広くても必ず目標の位置に着地する
-    // ※行動②のアニメーションは未対応なので、ここでは state を Idle のままにしておく
     // -------------------------------------------------------
     IEnumerator MoveJumpRoutine(float targetX)
     {
-        state = BossState.Idle;
+        // 上昇・水平移動・下降のすべてを通して MoveJump のまま。着地した時点で Idle に戻す
+        state = BossState.MoveJump;
         rb.gravityScale = 0f;
 
         // ① 真上へ上がる
@@ -175,6 +175,7 @@ public class BossCtrl : MonoBehaviour
         yield return WaitForLanding();
 
         // 着地。イーグルを呼ぶ間はその場から動かない
+        state = BossState.Idle;
         rb.linearVelocity = Vector2.zero;
     }
 
@@ -330,6 +331,7 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     // Animator へ state を反映する
     // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
+    // 行動パターン②では端への移動中に isMJump を使う
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
@@ -348,5 +350,9 @@ public class BossCtrl : MonoBehaviour
 
         // Fall1：滞空が終わってから着地するまでの落下中
         anim.SetBool("isFall1", state == BossState.Fall1);
+
+        // MoveJump：端へ移動するために跳び上がってから着地するまで
+        // 上昇・上空の水平移動・下降のすべてを含み、着地した瞬間に Idle へ戻る
+        anim.SetBool("isMJump", state == BossState.MoveJump);
     }
 }
