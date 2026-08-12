@@ -233,6 +233,13 @@ public class BossCtrl : MonoBehaviour
 
         GameObject eagle = Instantiate(attackEaglePrefab, new Vector3(spawnX, spawnY, 0f), Quaternion.identity);
 
+        // このイーグルとBossの間だけ衝突を無効化して、すり抜けるようにする。
+        // 生成位置がBossのコライダーに重なったときに押し出されて軌道が崩れるのと、
+        // 飛んでいる途中でBossが移動してきてぶつかるのを防ぐ。
+        // レイヤー（Enemy×Boss）ごと切ると他の敵とBossの衝突まで消えてしまうので、個体ごとに無効化する
+        Collider2D eagleColl = eagle.GetComponent<Collider2D>();
+        if (eagleColl != null) Physics2D.IgnoreCollision(eagleColl, coll);
+
         AttackEagleCtrl ctrl = eagle.GetComponent<AttackEagleCtrl>();
         if (ctrl != null) ctrl.Launch(dirX, eagleSpeed, despawnX);
     }
