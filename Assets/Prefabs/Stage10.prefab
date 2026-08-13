@@ -68629,6 +68629,10 @@ PrefabInstance:
       value: 22
       objectReference: {fileID: 0}
     - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: highJumpPowerY
+      value: 21
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: moveRiseHeight
       value: 6
       objectReference: {fileID: 0}
@@ -68643,6 +68647,10 @@ PrefabInstance:
     - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: smallJumpPowerY
       value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
+      propertyPath: floatChaseSpeedX
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 7766949827270337471, guid: f8b65469b37c44ef8b23bb2c914c3689, type: 3}
       propertyPath: eagleHeights.Array.size
