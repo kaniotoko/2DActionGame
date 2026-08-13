@@ -118,10 +118,27 @@ public class PlayerCrtl : MonoBehaviour
 
     void OnCollisionEnter2D(Collision2D other)
     {
-        //ボスは通常の敵と違い踏んでも倒せない。気絶中のみ踏みつけで攻撃できるようにする（③で実装）
+        //ボスは通常の敵と違い、平常時は踏んでも倒せずゲームオーバーになる。
+        //気絶中に上から踏んだときだけ攻撃が通り、ボスは踏まれた時点で気絶から復帰する
         if(other.gameObject.layer == LayerMask.NameToLayer("Boss"))
         {
-            mainManager.GameOver();
+            BossCtrl boss = other.gameObject.GetComponent<BossCtrl>();
+            //ボスのコライダーは足元にオフセットされた大きな円なので、
+            //敵と同じ transform.position の比較ではなく、ボスが公開している踏みつけラインで判定する
+            float playerBottomY = transform.position.y + coll.offset.y - coll.radius;
+
+            if(boss != null && boss.IsStunned && playerBottomY >= boss.StompLineY)
+            {
+                boss.Stomped();
+                isJump = true;
+                anim.SetBool("isJump", true);
+                rb.linearVelocityY = 0;
+                rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
+            }
+            else
+            {
+                mainManager.GameOver();
+            }
             return;
         }
 

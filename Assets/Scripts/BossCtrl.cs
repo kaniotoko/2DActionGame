@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BossCtrl : MonoBehaviour
@@ -65,14 +66,57 @@ public class BossCtrl : MonoBehaviour
         public int upperIndex; // 上側のイーグルの高さ番号
     }
 
+    [Header("行動パターン③：高く跳んで滞空 → 落下 → 気絶")]
+    // ①と同じ跳び方（初速を与えて重力で減速させる）で、より強い初速を与えて高く跳ぶ。
+    // 頂点の高さ ＝ 初速² ÷ (2 × 重力30)。26なら地面から約11.3
+    // カメラは orthographic size 10 なのでプレイヤーの±10しか映らない。
+    // Bossのコライダーは中心から下へ5.8あるので、31を超えると体ごと画面外に出る
+    public float highJumpPowerY = 21f;
+    public float floatChaseSpeedX = 30f;   // 滞空中にプレイヤーの真上へ回り込む速さ
+    public float floatHoverTime = 3f;      // 頂点でプレイヤーの頭上を飛び続ける時間（①はここで静止するだけ）
+    public float stunTime = 5f;            // 気絶して動けない時間。踏まれた場合は途中で打ち切る
+    public float stunEndIdleTime = 2f;     // 気絶から復帰したあと、Idleのまま静止している時間
+
+    [Header("行動パターン③：気絶中の足場")]
+    public GameObject stunPlatformPrefab;  // プレイヤーがBossの頭上まで登るための足場。Groundレイヤーのプレハブをセットする
+    public int stunPlatformBlockCount = 3; // 1つの足場を何個のブロックを横に並べて作るか
+
+    // 足場を出す位置。BossのX座標と、Bossが立っている地面の高さを原点とした相対座標。
+    //   x ＝ 足場の中心。ブロックはこの位置を中心に左右へ並ぶ
+    //   y ＝ 足場の踏み面（プレイヤーが乗る面）の高さ
+    // Bossのコライダーは半径3・上端が地面から6の高さなので、
+    // 遠い側を低く・近い側を高くして、階段状に登ってBossの上へ跳び移れるようにしている
+    public Vector2[] stunPlatformOffsets =
+    {
+        new Vector2(-9f, 2.5f),
+        new Vector2(-6f, 5f),
+        new Vector2(9f, 2.5f),
+        new Vector2(6f, 5f),
+    };
+
+    [Header("体力・踏みつけ判定")]
+    public int maxHp = 3;                  // 気絶中に踏める回数
+    public float stompTolerance = 0.5f;    // 踏みつけ判定の余裕。大きいほど甘くなる
+
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
     // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
     // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
-    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump }
+    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun }
 
     float defaultGravityScale;
+    int hp;
+    bool stompedInStun = false;                                    // 今回の気絶中にもう踏まれたか。気絶の待ち時間を打ち切るために使う
+    List<GameObject> stunPlatforms = new List<GameObject>();       // 気絶中に出している足場。復帰時にまとめて消す
+    HashSet<string> animBoolParams = new HashSet<string>();        // Animator に実際にある bool パラメータ名
+
+    // 気絶中か。プレイヤー側の踏みつけ判定で参照する
+    public bool IsStunned => state == BossState.Stun;
+
+    // プレイヤーのコライダーの底がこの高さ以上なら「Bossを上から踏んだ」とみなす。
+    // Bossのコライダーは半径3の大きな円なので、transform.position では上下の判定ができない
+    public float StompLineY => transform.position.y + coll.offset.y + coll.radius - stompTolerance;
 
     void Start()
     {
@@ -81,6 +125,9 @@ public class BossCtrl : MonoBehaviour
         anim = GetComponent<Animator>();
         player = GameObject.Find("Player").transform;
         defaultGravityScale = rb.gravityScale;
+        hp = maxHp;
+
+        CacheAnimatorBoolParams();
 
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         StartCoroutine(BossRoutine());
@@ -90,13 +137,16 @@ public class BossCtrl : MonoBehaviour
     {
         if (player == null) return;
 
-        FacePlayer();
+        // 気絶中は倒れているので、プレイヤーの方を向き直さない
+        if (state != BossState.Stun) FacePlayer();
+
         SyncAnimatorParams();
     }
 
     // -------------------------------------------------------
     // Bossの行動全体の流れ
-    // 行動①を patternARepeat 回 → 行動② → 最初に戻る
+    // 行動①を patternARepeat 回 → 行動② → 行動③ → 最初に戻る
+    // 行動③の気絶が終わったら、そのまま①からのルーティンを再開する
     // -------------------------------------------------------
     IEnumerator BossRoutine()
     {
@@ -108,6 +158,7 @@ public class BossCtrl : MonoBehaviour
             }
 
             yield return PatternB();
+            yield return PatternC();
         }
     }
 
@@ -144,6 +195,191 @@ public class BossCtrl : MonoBehaviour
 
         // 右端にいるので、今度はBossの左側から出して左端へ横切らせる
         yield return EagleWaveRoutine(stageLeftX);
+    }
+
+    // -------------------------------------------------------
+    // 行動パターン③（1サイクル分）
+    // プレイヤーの上空へ高く浮上 → 数秒プレイヤーを追いながら滞空 → 前動作をつけて落下
+    // → 着地して横向きに倒れ、数秒間気絶（この間だけプレイヤーに踏まれる）
+    // → 復帰したあと数秒Idleで静止して、①からのルーティンへ戻る
+    //
+    // 跳び上がりかたは①の大ジャンプとまったく同じで、
+    //   ・初速が強い（highJumpPowerY）ぶん頂点が高い
+    //   ・頂点で静止せず、プレイヤーの頭上を追いながら floatHoverTime 秒飛び続ける
+    //   ・着地したあとに気絶して無防備になる
+    // という点が違う
+    // -------------------------------------------------------
+    IEnumerator PatternC()
+    {
+        // ① ①の大ジャンプと同じ跳び方。より強い初速を与えて高く跳び上がる
+        state = BossState.HighJump;
+        rb.linearVelocity = new Vector2(0f, highJumpPowerY);
+
+        // 地面から離れるまで待つ（離れる前に頂点判定へ入らないようにする）
+        yield return new WaitUntil(() => !IsGrounded());
+
+        // 上昇中：プレイヤーの真上へ回り込む
+        while (rb.linearVelocity.y > 0f)
+        {
+            rb.linearVelocity = new Vector2(ChaseVelocityX(chaseSpeedX), rb.linearVelocity.y);
+            yield return null;
+        }
+
+        // ② 頂点。①はここで静止するだけだが、③は重力を切って高さを保ったまま
+        //    プレイヤーの頭上を追いかけ続ける
+        rb.gravityScale = 0f;
+
+        float hovered = 0f;
+        while (hovered < floatHoverTime)
+        {
+            rb.linearVelocity = new Vector2(ChaseVelocityX(floatChaseSpeedX), 0f);
+            hovered += Time.deltaTime;
+            yield return null;
+        }
+
+        // ③ 落下地点を確定させる（以降プレイヤーを追わない）
+        rb.linearVelocity = Vector2.zero;
+        yield return new WaitForSeconds(slamDelay);
+
+        // 前動作：少しだけ真上へ持ち上げてから落とす。重力を切ったままなので等速で上がる
+        state = BossState.Fall2;
+        rb.linearVelocity = new Vector2(0f, preSlamLiftSpeed);
+        yield return new WaitForSeconds(preSlamLiftTime);
+
+        // ④ 落下して着地
+        rb.gravityScale = defaultGravityScale;
+        rb.linearVelocity = new Vector2(0f, -slamSpeed);
+        yield return WaitForLanding();
+
+        rb.linearVelocity = Vector2.zero;
+
+        // ⑤ 気絶
+        yield return StunRoutine();
+
+        // ⑥ 復帰後は数秒その場で静止してから、次のルーティンへ
+        state = BossState.Idle;
+        yield return new WaitForSeconds(stunEndIdleTime);
+    }
+
+    // -------------------------------------------------------
+    // 気絶：横向きに倒れて stunTime 秒動けなくなる
+    // この間だけプレイヤーが上から踏んでダメージを与えられる（踏まれたら即座に復帰する）
+    // 周りに足場を出して、プレイヤーがBossの頭上まで登れるようにする
+    //
+    // 「横向きに倒れる」見た目は Stun のアニメーションで表現する。
+    // Bossのコライダーは中心が足元にずれた円（offset -2.8 / 半径3）なので、
+    // transform を回転させると当たり判定ごと横へずれて地面から浮いてしまう。
+    // そのため挙動側では transform を回転させず、状態を Stun にするだけにしている
+    // -------------------------------------------------------
+    IEnumerator StunRoutine()
+    {
+        state = BossState.Stun;
+        stompedInStun = false;
+
+        SpawnStunPlatforms();
+
+        // 踏まれたらその時点で気絶を打ち切る
+        float stunned = 0f;
+        while (stunned < stunTime && !stompedInStun)
+        {
+            stunned += Time.deltaTime;
+            yield return null;
+        }
+
+        DespawnStunPlatforms();
+    }
+
+    // -------------------------------------------------------
+    // 気絶中に上から踏まれたときにプレイヤー側（PlayerCrtl）から呼ばれる
+    // -------------------------------------------------------
+    public void Stomped()
+    {
+        // 気絶していないときの接触はプレイヤー側でゲームオーバーとして処理される。
+        // 1回の気絶で複数回ダメージが入らないよう、踏まれたあとの接触も無視する
+        if (state != BossState.Stun || stompedInStun) return;
+
+        hp--;
+        stompedInStun = true;
+
+        if (hp <= 0)
+        {
+            // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
+            DespawnStunPlatforms();
+
+            // TODO: 撃破時の演出（別途実装）
+            Destroy(gameObject);
+        }
+    }
+
+    // -------------------------------------------------------
+    // 気絶中の足場を出す
+    // stunPlatformOffsets の1件につき、ブロックを stunPlatformBlockCount 個だけ横に並べて1つの足場にする
+    // -------------------------------------------------------
+    void SpawnStunPlatforms()
+    {
+        if (stunPlatformPrefab == null) return;
+
+        // Bossは地面に着地しているので、コライダーの底がそのまま地面の高さになる
+        float groundY = transform.position.y + coll.offset.y - coll.radius;
+
+        // 足場ブロックの大きさと、位置から踏み面までの距離。
+        // 生成後の bounds は物理エンジンの同期待ちで正しい値が返らないことがあるため、
+        // イーグルと同じくプレハブのコライダー設定から直接求める
+        float blockWidth = 1f;
+        float topOffset = 0f;
+        BoxCollider2D prefabColl = stunPlatformPrefab.GetComponent<BoxCollider2D>();
+        if (prefabColl != null)
+        {
+            blockWidth = prefabColl.size.x;
+            topOffset = prefabColl.offset.y + prefabColl.size.y / 2f;
+        }
+
+        int blockCount = Mathf.Max(1, stunPlatformBlockCount);
+
+        foreach (Vector2 offset in stunPlatformOffsets)
+        {
+            // ブロックを offset.x を中心に左右へ均等に並べる
+            float leftBlockX = transform.position.x + offset.x - (blockCount - 1) * blockWidth / 2f;
+
+            // offset.y は踏み面の高さなので、プレハブの原点の高さに直す
+            float spawnY = groundY + offset.y - topOffset;
+
+            for (int i = 0; i < blockCount; i++)
+            {
+                Vector3 spawnPos = new Vector3(leftBlockX + i * blockWidth, spawnY, 0f);
+                GameObject platform = Instantiate(stunPlatformPrefab, spawnPos, Quaternion.identity);
+
+                // 足場がBossのコライダーに重なったときに押し出されて位置がずれるのを防ぐ。
+                // イーグルと同じく、レイヤーごとではなく個体ごとに無効化する
+                Collider2D platformColl = platform.GetComponent<Collider2D>();
+                if (platformColl != null) Physics2D.IgnoreCollision(platformColl, coll);
+
+                stunPlatforms.Add(platform);
+            }
+        }
+    }
+
+    // -------------------------------------------------------
+    // 気絶が終わったら足場をまとめて消す
+    // -------------------------------------------------------
+    void DespawnStunPlatforms()
+    {
+        foreach (GameObject platform in stunPlatforms)
+        {
+            if (platform != null) Destroy(platform);
+        }
+
+        stunPlatforms.Clear();
+    }
+
+    // -------------------------------------------------------
+    // プレイヤーの真上へ回り込むためのX方向の速度
+    // 近づくほど遅くなるので、プレイヤーの真上で行ったり来たりせずに落ち着く
+    // -------------------------------------------------------
+    float ChaseVelocityX(float speed)
+    {
+        float diffX = player.position.x - transform.position.x;
+        return Mathf.Clamp(diffX * speed, -speed, speed);
     }
 
     // -------------------------------------------------------
@@ -278,9 +514,7 @@ public class BossCtrl : MonoBehaviour
         // 上昇中：プレイヤーの真上へ回り込む
         while (rb.linearVelocity.y > 0f)
         {
-            float diffX = player.position.x - transform.position.x;
-            float velX = Mathf.Clamp(diffX * chaseSpeedX, -chaseSpeedX, chaseSpeedX);
-            rb.linearVelocity = new Vector2(velX, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(ChaseVelocityX(chaseSpeedX), rb.linearVelocity.y);
             yield return null;
         }
 
@@ -346,20 +580,52 @@ public class BossCtrl : MonoBehaviour
 
         // Idle：ジャンプモーションも落下モーションもしていない状態
         // 小ジャンプの着地ごと、および大ジャンプ後の着地硬直中もここに入る
-        anim.SetBool("isIdle", state == BossState.Idle);
+        SetBoolIfExists("isIdle", state == BossState.Idle);
 
         // SmallJump：跳び上がってから着地するまで。着地した瞬間に Idle へ戻る
-        anim.SetBool("isSJump", state == BossState.SmallJump);
+        SetBoolIfExists("isSJump", state == BossState.SmallJump);
 
         // BigJump：跳び上がってプレイヤーの真上へ回り込み、滞空し終えるまで
         // 落下に転じた時点で Fall1 へ移るので、ここで false になる
-        anim.SetBool("isBJump", state == BossState.BigJump);
+        SetBoolIfExists("isBJump", state == BossState.BigJump);
 
         // Fall1：滞空が終わってから着地するまでの落下中
-        anim.SetBool("isFall1", state == BossState.Fall1);
+        SetBoolIfExists("isFall1", state == BossState.Fall1);
 
         // MoveJump：端へ移動するために跳び上がってから着地するまで
         // 上昇・上空の水平移動・下降のすべてを含み、着地した瞬間に Idle へ戻る
-        anim.SetBool("isMJump", state == BossState.MoveJump);
+        SetBoolIfExists("isMJump", state == BossState.MoveJump);
+
+        // ここから下は行動パターン③用。アニメーションの対応は別ブランチで行うため、
+        // BossAnimationCtrl にはまだこれらのパラメータがない
+        // HighJump：高く浮上してプレイヤーの頭上で滞空している間
+        SetBoolIfExists("isHJump", state == BossState.HighJump);
+
+        // Fall2：滞空が終わってから着地するまでの落下中（前動作を含む）
+        SetBoolIfExists("isFall2", state == BossState.Fall2);
+
+        // Stun：着地して横向きに倒れ、気絶している間
+        SetBoolIfExists("isStun", state == BossState.Stun);
+    }
+
+    // -------------------------------------------------------
+    // Animator にあるパラメータだけを設定する
+    // 行動パターン③のパラメータは別ブランチで追加するまで存在せず、
+    // そのまま SetBool すると毎フレーム警告が出てしまうため
+    // -------------------------------------------------------
+    void SetBoolIfExists(string paramName, bool value)
+    {
+        if (animBoolParams.Contains(paramName)) anim.SetBool(paramName, value);
+    }
+
+    // Animator.parameters は呼ぶたびに配列を作るので、起動時に一度だけ名前を控えておく
+    void CacheAnimatorBoolParams()
+    {
+        if (anim == null) return;
+
+        foreach (AnimatorControllerParameter param in anim.parameters)
+        {
+            if (param.type == AnimatorControllerParameterType.Bool) animBoolParams.Add(param.name);
+        }
     }
 }
