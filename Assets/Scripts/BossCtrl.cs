@@ -66,11 +66,14 @@ public class BossCtrl : MonoBehaviour
         public int upperIndex; // 上側のイーグルの高さ番号
     }
 
-    [Header("行動パターン③：浮上 → 落下 → 気絶")]
-    public float floatRiseHeight = 18f;    // 地面からどれだけ高く浮上するか
-    public float floatRiseSpeed = 14f;     // 浮上するときの速さ
-    public float floatChaseSpeedX = 12f;   // 浮上中・滞空中にプレイヤーの真上へ回り込む速さ
-    public float floatHoverTime = 3f;      // プレイヤーの頭上で飛び続ける時間（①の滞空より長い）
+    [Header("行動パターン③：高く跳んで滞空 → 落下 → 気絶")]
+    // ①と同じ跳び方（初速を与えて重力で減速させる）で、より強い初速を与えて高く跳ぶ。
+    // 頂点の高さ ＝ 初速² ÷ (2 × 重力30)。26なら地面から約11.3
+    // カメラは orthographic size 10 なのでプレイヤーの±10しか映らない。
+    // Bossのコライダーは中心から下へ5.8あるので、31を超えると体ごと画面外に出る
+    public float highJumpPowerY = 21f;
+    public float floatChaseSpeedX = 30f;   // 滞空中にプレイヤーの真上へ回り込む速さ
+    public float floatHoverTime = 3f;      // 頂点でプレイヤーの頭上を飛び続ける時間（①はここで静止するだけ）
     public float stunTime = 5f;            // 気絶して動けない時間。踏まれた場合は途中で打ち切る
     public float stunEndIdleTime = 2f;     // 気絶から復帰したあと、Idleのまま静止している時間
 
@@ -200,30 +203,36 @@ public class BossCtrl : MonoBehaviour
     // → 着地して横向きに倒れ、数秒間気絶（この間だけプレイヤーに踏まれる）
     // → 復帰したあと数秒Idleで静止して、①からのルーティンへ戻る
     //
-    // ①の大ジャンプと流れは同じだが、
-    //   ・跳び上がるのではなく重力を切って高く浮上する
-    //   ・プレイヤーの真上での滞空時間が長い（floatHoverTime）
+    // 跳び上がりかたは①の大ジャンプとまったく同じで、
+    //   ・初速が強い（highJumpPowerY）ぶん頂点が高い
+    //   ・頂点で静止せず、プレイヤーの頭上を追いながら floatHoverTime 秒飛び続ける
     //   ・着地したあとに気絶して無防備になる
     // という点が違う
     // -------------------------------------------------------
     IEnumerator PatternC()
     {
-        // ① プレイヤーの上空まで高く浮上する。上がりながらプレイヤーのX座標を追う
+        // ① ①の大ジャンプと同じ跳び方。より強い初速を与えて高く跳び上がる
         state = BossState.HighJump;
-        rb.gravityScale = 0f;
+        rb.linearVelocity = new Vector2(0f, highJumpPowerY);
 
-        float peakY = transform.position.y + floatRiseHeight;
-        while (transform.position.y < peakY)
+        // 地面から離れるまで待つ（離れる前に頂点判定へ入らないようにする）
+        yield return new WaitUntil(() => !IsGrounded());
+
+        // 上昇中：プレイヤーの真上へ回り込む
+        while (rb.linearVelocity.y > 0f)
         {
-            rb.linearVelocity = new Vector2(ChaseVelocityX(), floatRiseSpeed);
+            rb.linearVelocity = new Vector2(ChaseVelocityX(chaseSpeedX), rb.linearVelocity.y);
             yield return null;
         }
 
-        // ② プレイヤーの頭上で飛行し続ける。①の滞空（slamDelay）より長く粘る
+        // ② 頂点。①はここで静止するだけだが、③は重力を切って高さを保ったまま
+        //    プレイヤーの頭上を追いかけ続ける
+        rb.gravityScale = 0f;
+
         float hovered = 0f;
         while (hovered < floatHoverTime)
         {
-            rb.linearVelocity = new Vector2(ChaseVelocityX(), 0f);
+            rb.linearVelocity = new Vector2(ChaseVelocityX(floatChaseSpeedX), 0f);
             hovered += Time.deltaTime;
             yield return null;
         }
@@ -367,10 +376,10 @@ public class BossCtrl : MonoBehaviour
     // プレイヤーの真上へ回り込むためのX方向の速度
     // 近づくほど遅くなるので、プレイヤーの真上で行ったり来たりせずに落ち着く
     // -------------------------------------------------------
-    float ChaseVelocityX()
+    float ChaseVelocityX(float speed)
     {
         float diffX = player.position.x - transform.position.x;
-        return Mathf.Clamp(diffX * floatChaseSpeedX, -floatChaseSpeedX, floatChaseSpeedX);
+        return Mathf.Clamp(diffX * speed, -speed, speed);
     }
 
     // -------------------------------------------------------
@@ -505,9 +514,7 @@ public class BossCtrl : MonoBehaviour
         // 上昇中：プレイヤーの真上へ回り込む
         while (rb.linearVelocity.y > 0f)
         {
-            float diffX = player.position.x - transform.position.x;
-            float velX = Mathf.Clamp(diffX * chaseSpeedX, -chaseSpeedX, chaseSpeedX);
-            rb.linearVelocity = new Vector2(velX, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(ChaseVelocityX(chaseSpeedX), rb.linearVelocity.y);
             yield return null;
         }
 
