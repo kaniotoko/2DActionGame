@@ -8,6 +8,7 @@ public class BossCtrl : MonoBehaviour
     Rigidbody2D rb;
     CircleCollider2D coll;
     Animator anim;
+    SpriteRenderer sr;
 
     [Header("小ジャンプ設定")]
     public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
@@ -76,6 +77,8 @@ public class BossCtrl : MonoBehaviour
     public float floatHoverTime = 3f;      // 頂点でプレイヤーの頭上を飛び続ける時間（①はここで静止するだけ）
     public float stunTime = 5f;            // 気絶して動けない時間。踏まれた場合は途中で打ち切る
     public float stunEndIdleTime = 2f;     // 気絶から復帰したあと、Idleのまま静止している時間
+    public float stunFallAngle = -90f;     // 気絶したときに倒れ込むZ角度。-90で進行方向側へ倒れる
+    public float stunFallTime = 0.3f;      // 倒れ込み／起き上がりにかける時間
 
     [Header("行動パターン③：気絶中の足場")]
     public GameObject stunPlatformPrefab;  // プレイヤーがBossの頭上まで登るための足場。Groundレイヤーのプレハブをセットする
@@ -98,6 +101,10 @@ public class BossCtrl : MonoBehaviour
     public int maxHp = 3;                  // 気絶中に踏める回数
     public float stompTolerance = 0.5f;    // 踏みつけ判定の余裕。大きいほど甘くなる
 
+    [Header("被ダメージ演出")]
+    public float damageBlinkTime = 1.5f;     // 踏まれてから点滅し続ける時間
+    public float damageBlinkInterval = 0.08f;// 表示／非表示を切り替える間隔。小さいほど速く点滅する
+
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
@@ -106,10 +113,12 @@ public class BossCtrl : MonoBehaviour
     public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun }
 
     float defaultGravityScale;
+    float facingY = 0f;                                            // 向きを表すY回転。0で右向き、180で左向き
+    float stunAngle = 0f;                                          // 気絶時の倒れ込みを表すZ回転。平常時は0
     int hp;
     bool stompedInStun = false;                                    // 今回の気絶中にもう踏まれたか。気絶の待ち時間を打ち切るために使う
     List<GameObject> stunPlatforms = new List<GameObject>();       // 気絶中に出している足場。復帰時にまとめて消す
-    HashSet<string> animBoolParams = new HashSet<string>();        // Animator に実際にある bool パラメータ名
+    Coroutine blinkRoutine;                                        // 実行中の被ダメージ点滅。踏み直されたら止めて回し直す
 
     // 気絶中か。プレイヤー側の踏みつけ判定で参照する
     public bool IsStunned => state == BossState.Stun;
@@ -123,11 +132,10 @@ public class BossCtrl : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
+        sr = GetComponent<SpriteRenderer>();
         player = GameObject.Find("Player").transform;
         defaultGravityScale = rb.gravityScale;
         hp = maxHp;
-
-        CacheAnimatorBoolParams();
 
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         StartCoroutine(BossRoutine());
@@ -137,9 +145,7 @@ public class BossCtrl : MonoBehaviour
     {
         if (player == null) return;
 
-        // 気絶中は倒れているので、プレイヤーの方を向き直さない
-        if (state != BossState.Stun) FacePlayer();
-
+        FacePlayer();
         SyncAnimatorParams();
     }
 
@@ -266,10 +272,11 @@ public class BossCtrl : MonoBehaviour
     // この間だけプレイヤーが上から踏んでダメージを与えられる（踏まれたら即座に復帰する）
     // 周りに足場を出して、プレイヤーがBossの頭上まで登れるようにする
     //
-    // 「横向きに倒れる」見た目は Stun のアニメーションで表現する。
-    // Bossのコライダーは中心が足元にずれた円（offset -2.8 / 半径3）なので、
-    // transform を回転させると当たり判定ごと横へずれて地面から浮いてしまう。
-    // そのため挙動側では transform を回転させず、状態を Stun にするだけにしている
+    // 倒れ込みは transform のZ回転で表現する。
+    // Bossのコライダーは原点を中心とした円（offset 0 / 半径3）なので、
+    // 回転軸と円の中心が一致しており、何度回しても当たり判定は1ミリも動かない。
+    // アニメーションのクリップで回さないのは、Unityの回転カーブがx/y/zの3軸セットで、
+    // Zだけを動かせずY（＝FacePlayerの向き）まで上書きしてしまうため
     // -------------------------------------------------------
     IEnumerator StunRoutine()
     {
@@ -278,13 +285,33 @@ public class BossCtrl : MonoBehaviour
 
         SpawnStunPlatforms();
 
-        // 踏まれたらその時点で気絶を打ち切る
-        float stunned = 0f;
-        while (stunned < stunTime && !stompedInStun)
+        // 横向きに倒れ込む
+        float elapsed = 0f;
+        while (elapsed < stunFallTime)
         {
-            stunned += Time.deltaTime;
+            elapsed += Time.deltaTime;
+            stunAngle = Mathf.Lerp(0f, stunFallAngle, elapsed / stunFallTime);
             yield return null;
         }
+        stunAngle = stunFallAngle;
+
+        // 倒れたまま気絶。踏まれたらその時点で打ち切る
+        while (elapsed < stunTime && !stompedInStun)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // 起き上がる
+        float gettingUp = 0f;
+        float fallenAngle = stunAngle;
+        while (gettingUp < stunFallTime)
+        {
+            gettingUp += Time.deltaTime;
+            stunAngle = Mathf.Lerp(fallenAngle, 0f, gettingUp / stunFallTime);
+            yield return null;
+        }
+        stunAngle = 0f;
 
         DespawnStunPlatforms();
     }
@@ -308,7 +335,54 @@ public class BossCtrl : MonoBehaviour
 
             // TODO: 撃破時の演出（別途実装）
             Destroy(gameObject);
+            return;
         }
+
+        // ダメージが入ったことを見せる点滅。
+        // 気絶の打ち切り → 起き上がり → 復帰後の静止 をまたいで続くので、
+        // 行動のコルーチン（BossRoutine）とは独立して回す
+        StartDamageBlink();
+    }
+
+    // -------------------------------------------------------
+    // 被ダメージの点滅を開始する
+    // 点滅中にもう一度踏まれた場合は、前の点滅を止めてから鳴らし直す
+    // -------------------------------------------------------
+    void StartDamageBlink()
+    {
+        if (sr == null) return;
+
+        if (blinkRoutine != null)
+        {
+            StopCoroutine(blinkRoutine);
+            sr.enabled = true; // 消えたまま止まらないように戻しておく
+        }
+
+        blinkRoutine = StartCoroutine(DamageBlinkRoutine());
+    }
+
+    // -------------------------------------------------------
+    // damageBlinkTime 秒のあいだ、スプライトの表示／非表示を繰り返す
+    //
+    // 既存のクリップは m_Sprite しか動かしていないので、SpriteRenderer の enabled を
+    // ここで切り替えてもAnimatorと取り合いにならない。
+    // Animatorのレイヤーは同時に1つのstateしか再生できず、点滅用のstateを作ると
+    // その間モーションが止まってしまうため、演出はアニメーションではなくコードで持つ
+    // -------------------------------------------------------
+    IEnumerator DamageBlinkRoutine()
+    {
+        // 0以下だと切り替えが進まず無限ループになるので下限を設ける
+        float interval = Mathf.Max(0.02f, damageBlinkInterval);
+
+        for (float elapsed = 0f; elapsed < damageBlinkTime; elapsed += interval)
+        {
+            sr.enabled = !sr.enabled;
+            yield return new WaitForSeconds(interval);
+        }
+
+        // 何回切り替えて終わっても、必ず表示された状態で終える
+        sr.enabled = true;
+        blinkRoutine = null;
     }
 
     // -------------------------------------------------------
@@ -560,19 +634,22 @@ public class BossCtrl : MonoBehaviour
 
     // -------------------------------------------------------
     // 常にプレイヤーの方を向く。Vultureのスプライトは回転0で左向きなのでEagleCtrlと同じ扱いにする
+    // 向き（Y）と気絶時の倒れ込み（Z）をここで合成する。
+    // 気絶中は向き直らないので、倒れ込む直前に向いていた方向のまま倒れる
     // -------------------------------------------------------
     void FacePlayer()
     {
-        if (player.position.x > transform.position.x)
-            transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-        else
-            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        if (state != BossState.Stun)
+            facingY = player.position.x > transform.position.x ? 0f : 180f;
+
+        transform.rotation = Quaternion.Euler(0f, facingY, stunAngle);
     }
 
     // -------------------------------------------------------
     // Animator へ state を反映する
-    // 行動パターン①（衝撃波なし）で使うのは isIdle / isSJump / isBJump / isFall1 の4つ
+    // 行動パターン①で使うのは isIdle / isSJump / isBJump / isFall1
     // 行動パターン②では端への移動中に isMJump を使う
+    // 行動パターン③では isBJump2 / isFall2 / isStun を使う
     // -------------------------------------------------------
     void SyncAnimatorParams()
     {
@@ -580,52 +657,34 @@ public class BossCtrl : MonoBehaviour
 
         // Idle：ジャンプモーションも落下モーションもしていない状態
         // 小ジャンプの着地ごと、および大ジャンプ後の着地硬直中もここに入る
-        SetBoolIfExists("isIdle", state == BossState.Idle);
+        // 気絶から復帰したあとの静止（stunEndIdleTime）中もここに入る
+        anim.SetBool("isIdle", state == BossState.Idle);
 
         // SmallJump：跳び上がってから着地するまで。着地した瞬間に Idle へ戻る
-        SetBoolIfExists("isSJump", state == BossState.SmallJump);
+        anim.SetBool("isSJump", state == BossState.SmallJump);
 
         // BigJump：跳び上がってプレイヤーの真上へ回り込み、滞空し終えるまで
         // 落下に転じた時点で Fall1 へ移るので、ここで false になる
-        SetBoolIfExists("isBJump", state == BossState.BigJump);
+        anim.SetBool("isBJump", state == BossState.BigJump);
 
         // Fall1：滞空が終わってから着地するまでの落下中
-        SetBoolIfExists("isFall1", state == BossState.Fall1);
+        anim.SetBool("isFall1", state == BossState.Fall1);
 
         // MoveJump：端へ移動するために跳び上がってから着地するまで
         // 上昇・上空の水平移動・下降のすべてを含み、着地した瞬間に Idle へ戻る
-        SetBoolIfExists("isMJump", state == BossState.MoveJump);
+        anim.SetBool("isMJump", state == BossState.MoveJump);
 
-        // ここから下は行動パターン③用。アニメーションの対応は別ブランチで行うため、
-        // BossAnimationCtrl にはまだこれらのパラメータがない
-        // HighJump：高く浮上してプレイヤーの頭上で滞空している間
-        SetBoolIfExists("isHJump", state == BossState.HighJump);
+        // BigJump2：③で高く跳び上がり、プレイヤーの頭上で滞空し終えるまで
+        // ①のBigJumpと同じ跳び方の強化版。落下に転じた時点で Fall2 へ移る
+        // （state 名は HighJump。跳ぶ強さを決めるのは highJumpPowerY）
+        anim.SetBool("isBJump2", state == BossState.HighJump);
 
         // Fall2：滞空が終わってから着地するまでの落下中（前動作を含む）
-        SetBoolIfExists("isFall2", state == BossState.Fall2);
+        anim.SetBool("isFall2", state == BossState.Fall2);
 
         // Stun：着地して横向きに倒れ、気絶している間
-        SetBoolIfExists("isStun", state == BossState.Stun);
-    }
-
-    // -------------------------------------------------------
-    // Animator にあるパラメータだけを設定する
-    // 行動パターン③のパラメータは別ブランチで追加するまで存在せず、
-    // そのまま SetBool すると毎フレーム警告が出てしまうため
-    // -------------------------------------------------------
-    void SetBoolIfExists(string paramName, bool value)
-    {
-        if (animBoolParams.Contains(paramName)) anim.SetBool(paramName, value);
-    }
-
-    // Animator.parameters は呼ぶたびに配列を作るので、起動時に一度だけ名前を控えておく
-    void CacheAnimatorBoolParams()
-    {
-        if (anim == null) return;
-
-        foreach (AnimatorControllerParameter param in anim.parameters)
-        {
-            if (param.type == AnimatorControllerParameterType.Bool) animBoolParams.Add(param.name);
-        }
+        // 倒れ込みと起き上がりのZ回転は FacePlayer が担当するので、
+        // クリップ側は倒れているポーズのスプライトだけを持てばよい
+        anim.SetBool("isStun", state == BossState.Stun);
     }
 }
