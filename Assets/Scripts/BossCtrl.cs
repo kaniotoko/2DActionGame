@@ -8,6 +8,7 @@ public class BossCtrl : MonoBehaviour
     Rigidbody2D rb;
     CircleCollider2D coll;
     Animator anim;
+    SpriteRenderer sr;
 
     [Header("小ジャンプ設定")]
     public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
@@ -100,6 +101,10 @@ public class BossCtrl : MonoBehaviour
     public int maxHp = 3;                  // 気絶中に踏める回数
     public float stompTolerance = 0.5f;    // 踏みつけ判定の余裕。大きいほど甘くなる
 
+    [Header("被ダメージ演出")]
+    public float damageBlinkTime = 1.5f;     // 踏まれてから点滅し続ける時間
+    public float damageBlinkInterval = 0.08f;// 表示／非表示を切り替える間隔。小さいほど速く点滅する
+
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
@@ -113,6 +118,7 @@ public class BossCtrl : MonoBehaviour
     int hp;
     bool stompedInStun = false;                                    // 今回の気絶中にもう踏まれたか。気絶の待ち時間を打ち切るために使う
     List<GameObject> stunPlatforms = new List<GameObject>();       // 気絶中に出している足場。復帰時にまとめて消す
+    Coroutine blinkRoutine;                                        // 実行中の被ダメージ点滅。踏み直されたら止めて回し直す
 
     // 気絶中か。プレイヤー側の踏みつけ判定で参照する
     public bool IsStunned => state == BossState.Stun;
@@ -126,6 +132,7 @@ public class BossCtrl : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         coll = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
+        sr = GetComponent<SpriteRenderer>();
         player = GameObject.Find("Player").transform;
         defaultGravityScale = rb.gravityScale;
         hp = maxHp;
@@ -328,7 +335,54 @@ public class BossCtrl : MonoBehaviour
 
             // TODO: 撃破時の演出（別途実装）
             Destroy(gameObject);
+            return;
         }
+
+        // ダメージが入ったことを見せる点滅。
+        // 気絶の打ち切り → 起き上がり → 復帰後の静止 をまたいで続くので、
+        // 行動のコルーチン（BossRoutine）とは独立して回す
+        StartDamageBlink();
+    }
+
+    // -------------------------------------------------------
+    // 被ダメージの点滅を開始する
+    // 点滅中にもう一度踏まれた場合は、前の点滅を止めてから鳴らし直す
+    // -------------------------------------------------------
+    void StartDamageBlink()
+    {
+        if (sr == null) return;
+
+        if (blinkRoutine != null)
+        {
+            StopCoroutine(blinkRoutine);
+            sr.enabled = true; // 消えたまま止まらないように戻しておく
+        }
+
+        blinkRoutine = StartCoroutine(DamageBlinkRoutine());
+    }
+
+    // -------------------------------------------------------
+    // damageBlinkTime 秒のあいだ、スプライトの表示／非表示を繰り返す
+    //
+    // 既存のクリップは m_Sprite しか動かしていないので、SpriteRenderer の enabled を
+    // ここで切り替えてもAnimatorと取り合いにならない。
+    // Animatorのレイヤーは同時に1つのstateしか再生できず、点滅用のstateを作ると
+    // その間モーションが止まってしまうため、演出はアニメーションではなくコードで持つ
+    // -------------------------------------------------------
+    IEnumerator DamageBlinkRoutine()
+    {
+        // 0以下だと切り替えが進まず無限ループになるので下限を設ける
+        float interval = Mathf.Max(0.02f, damageBlinkInterval);
+
+        for (float elapsed = 0f; elapsed < damageBlinkTime; elapsed += interval)
+        {
+            sr.enabled = !sr.enabled;
+            yield return new WaitForSeconds(interval);
+        }
+
+        // 何回切り替えて終わっても、必ず表示された状態で終える
+        sr.enabled = true;
+        blinkRoutine = null;
     }
 
     // -------------------------------------------------------
