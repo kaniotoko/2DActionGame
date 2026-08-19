@@ -101,6 +101,12 @@ public class BossCtrl : MonoBehaviour
     public int maxHp = 3;                  // 気絶中に踏める回数
     public float stompTolerance = 0.5f;    // 踏みつけ判定の余裕。大きいほど甘くなる
 
+    [Header("撃破後のGem")]
+    public GameObject gemPrefab;                          // Gem.prefab をセットする
+    public Vector2 gemSpawnPos = new Vector2(23.6f, 5f);  // 空中に出す位置
+    public float gemGroundY = -1.7f;                      // 下ろしきったときのY
+    public float gemDescendSpeed = 1.5f;                  // 1秒あたりに下がるユニット数
+
     [Header("被ダメージ演出")]
     public float damageBlinkTime = 1.5f;     // 踏まれてから点滅し続ける時間
     public float damageBlinkInterval = 0.08f;// 表示／非表示を切り替える間隔。小さいほど速く点滅する
@@ -333,7 +339,10 @@ public class BossCtrl : MonoBehaviour
             // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
             DespawnStunPlatforms();
 
-            // TODO: 撃破時の演出（別途実装）
+            // クリア用のGemを空中に出す。降下はGem側（GemCtrl）が続けるので、
+            // このあとBossが消えても止まらない
+            SpawnGem();
+
             Destroy(gameObject);
             return;
         }
@@ -342,6 +351,21 @@ public class BossCtrl : MonoBehaviour
         // 気絶の打ち切り → 起き上がり → 復帰後の静止 をまたいで続くので、
         // 行動のコルーチン（BossRoutine）とは独立して回す
         StartDamageBlink();
+    }
+
+    // -------------------------------------------------------
+    // Bossを倒したときにクリア用のGemを出す
+    // gemSpawnPos の空中に出してから gemGroundY までゆっくり下ろす。
+    // 降下中もコライダーは生きているので、プレイヤーが跳んで触れればその時点でクリアになる
+    // -------------------------------------------------------
+    void SpawnGem()
+    {
+        if (gemPrefab == null) return;
+
+        GameObject gem = Instantiate(gemPrefab, gemSpawnPos, Quaternion.identity);
+
+        GemCtrl ctrl = gem.GetComponent<GemCtrl>();
+        if (ctrl != null) ctrl.StartDescend(gemGroundY, gemDescendSpeed);
     }
 
     // -------------------------------------------------------
