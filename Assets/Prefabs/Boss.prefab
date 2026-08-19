@@ -196,14 +196,58 @@ MonoBehaviour:
   smallJumpPowerX: 5
   smallJumpCount: 2
   smallJumpInterval: 0.3
-  keepDistance: 4
   bigJumpPowerY: 24
   chaseSpeedX: 12
   slamSpeed: 30
   slamDelay: 0.2
+  preSlamLiftSpeed: 6
+  preSlamLiftTime: 0.15
   landRecoverTime: 0.8
-  attackEaglePrefab: {fileID: 6084587470587900296, guid: f9d984bf67d5f443ab0c3fbc0013a68a,
-    type: 3}
-  stunPlatformPrefab: {fileID: 2215653729513215977, guid: c073524213dc84fc8a39245b3cba8d76,
-    type: 3}
+  patternARepeat: 2
+  stageLeftX: -11.2
+  stageRightX: 58.6
+  moveRiseHeight: 12
+  moveRiseSpeed: 20
+  moveHorizontalSpeed: 30
+  moveFallSpeed: 20
+  attackEaglePrefab: {fileID: 6084587470587900296, guid: f9d984bf67d5f443ab0c3fbc0013a68a, type: 3}
+  eagleSpeed: 12
+  eagleWaveInterval: 1.2
+  eagleWaveEndWait: 1
+  eagleSpawnOffset: 1
+  eagleDespawnMargin: 5
+  eagleHeights:
+  - 0.2
+  - 1.2
+  - 2.2
+  - 3.2
+  eagleWaves:
+  - lowerIndex: 0
+    upperIndex: 1
+  - lowerIndex: 2
+    upperIndex: 3
+  - lowerIndex: 0
+    upperIndex: 1
+  highJumpPowerY: 21
+  floatChaseSpeedX: 30
+  floatHoverTime: 3
+  stunTime: 5
+  stunEndIdleTime: 2
+  stunFallAngle: -90
+  stunFallTime: 0.3
+  stunPlatformPrefab: {fileID: 2215653729513215977, guid: c073524213dc84fc8a39245b3cba8d76, type: 3}
+  stunPlatformBlockCount: 3
+  stunPlatformOffsets:
+  - {x: -9, y: 2.5}
+  - {x: -6, y: 5}
+  - {x: 9, y: 2.5}
+  - {x: 6, y: 5}
+  maxHp: 3
+  stompTolerance: 0.5
+  gemPrefab: {fileID: 737956220449250086, guid: bd8d2475d848b4e1b83b849368559edf, type: 3}
+  gemSpawnPos: {x: 23.6, y: 5}
+  gemGroundY: -1.7
+  gemDescendSpeed: 1.5
+  damageBlinkTime: 1.5
+  damageBlinkInterval: 0.08
   state: 0
