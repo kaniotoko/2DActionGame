@@ -112,8 +112,7 @@ public class BossCtrl : MonoBehaviour
     public float descendSpeed = 4f;
 
     public float descendMaxDistance = 100f; // 出現位置から真下にこの距離まで地面を探す
-    public float landPauseTime = 1.5f;    // 着地してから登場モーションに移るまでの停止時間
-    public float beginTime = 2f;          // 登場モーション（Begin）を再生する時間
+    public float beginTime = 3.5f;        // 着地してから戦闘開始までの間、登場モーション（Begin）を再生する時間
 
     [Header("撃破後のGem")]
     public GameObject gemPrefab;                          // Gem.prefab をセットする
@@ -193,7 +192,7 @@ public class BossCtrl : MonoBehaviour
 
     // -------------------------------------------------------
     // 登場演出のうち、Boss自身の動きの部分
-    // 出現位置から等速で下降 → 着地して数秒停止 → 登場モーション
+    // 出現位置から等速で下降 → 着地したらそのまま登場モーション
     //
     // 下降を重力ではなく手で動かすのは、
     // ステージのどこに出現させても同じ速さでゆっくり下りてほしいため
@@ -245,9 +244,8 @@ public class BossCtrl : MonoBehaviour
         // 着地。物理を元に戻して、以降は通常どおり重力で地面に留まる
         RestorePhysics();
 
-        yield return new WaitForSeconds(landPauseTime);
-
-        // 戦闘開始直前の登場モーション
+        // 着地したらそのまま戦闘開始直前の登場モーションへ移る。
+        // 着地後の間の取りかたは Begin の再生時間（beginTime）で調整する
         state = BossState.Begin;
         yield return new WaitForSeconds(beginTime);
     }
@@ -831,10 +829,10 @@ public class BossCtrl : MonoBehaviour
         anim.SetBool("isStun", state == BossState.Stun);
 
         // SpawnFall：登場演出で出現してから地面に下りきるまで
-        // 着地したあとの停止（landPauseTime）中もここに入る
+        // 着地した瞬間に Begin へ移る
         anim.SetBool("isSpawnFall", state == BossState.SpawnFall);
 
-        // Begin：着地後の停止が終わってから戦闘開始までの登場モーション
+        // Begin：着地してから戦闘開始までの登場モーション
         // 再生し終わると Idle に移り、行動①からのルーティンが始まる
         anim.SetBool("isBegin", state == BossState.Begin);
     }
