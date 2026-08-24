@@ -101,6 +101,20 @@ public class BossCtrl : MonoBehaviour
     public int maxHp = 3;                  // 気絶中に踏める回数
     public float stompTolerance = 0.5f;    // 踏みつけ判定の余裕。大きいほど甘くなる
 
+    [Header("登場演出")]
+    // 煙とプレイヤーのロック、カメラの操作は BossSpawner が担当する。
+    // ここではBoss自身の動き（下降 → 停止 → 登場モーション）だけを持つ
+    public bool playIntro = true;         // trueならStartでは動き出さず、BossSpawnerがPlayIntroを回す
+    // 出現位置から地面へ下りるときの速さ（1秒あたりに下がるユニット数）。
+    // 重力は使わないので、この値がそのまま下降の速さになる。
+    // スライダーにしてあるので、再生しながらドラッグして詰められる
+    [Range(0.1f, 10f)]
+    public float descendSpeed = 4f;
+
+    public float descendMaxDistance = 100f; // 出現位置から真下にこの距離まで地面を探す
+    public float landPauseTime = 1.5f;    // 着地してから登場モーションに移るまでの停止時間
+    public float beginTime = 2f;          // 登場モーション（Begin）を再生する時間
+
     [Header("撃破後のGem")]
     public GameObject gemPrefab;                          // Gem.prefab をセットする
     public Vector2 gemSpawnPos = new Vector2(23.6f, 5f);  // 空中に出す位置
@@ -116,7 +130,7 @@ public class BossCtrl : MonoBehaviour
 
     // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
     // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
-    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun }
+    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun, SpawnFall, Begin }
 
     float defaultGravityScale;
     float facingY = 0f;                                            // 向きを表すY回転。0で右向き、180で左向き
@@ -133,7 +147,11 @@ public class BossCtrl : MonoBehaviour
     // Bossのコライダーは半径3の大きな円なので、transform.position では上下の判定ができない
     public float StompLineY => transform.position.y + coll.offset.y + coll.radius - stompTolerance;
 
-    void Start()
+    // 初期化はStartではなくAwakeで行う。
+    // BossSpawnerはInstantiateしたその場で PlayIntro を呼ぶが、
+    // Startは次のフレームまで実行されないため、Startで初期化していると
+    // PlayIntroの中で rb がまだ null のままになってしまう
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         coll = GetComponent<CircleCollider2D>();
@@ -144,7 +162,94 @@ public class BossCtrl : MonoBehaviour
         hp = maxHp;
 
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        // 登場演出があるときは、BossSpawnerがPlayIntroを回し終えてから
+        // StartBattleを呼んでくれるので、ここでは動き出さない。
+        // PlayIntroが呼ばれるまでの数フレームIdleが再生されないよう、先に状態を移しておく。
+        // 重力も切っておく。PlayIntroが動き出す前の数フレームで落ち始めないようにする
+        if (playIntro)
+        {
+            state = BossState.SpawnFall;
+            rb.gravityScale = 0f;
+            rb.linearVelocity = Vector2.zero;
+        }
+    }
+
+    void Start()
+    {
+        // 登場演出なしでシーンに直接置いた場合だけ、そのまま戦闘を始める
+        if (!playIntro) StartBattle();
+    }
+
+    // -------------------------------------------------------
+    // 戦闘開始。行動①からのルーティンを回し始める
+    // 登場演出があるときは BossSpawner から呼ばれる
+    // -------------------------------------------------------
+    public void StartBattle()
+    {
+        state = BossState.Idle;
         StartCoroutine(BossRoutine());
+    }
+
+    // -------------------------------------------------------
+    // 登場演出のうち、Boss自身の動きの部分
+    // 出現位置から等速で下降 → 着地して数秒停止 → 登場モーション
+    //
+    // 下降を重力ではなく手で動かすのは、
+    // ステージのどこに出現させても同じ速さでゆっくり下りてほしいため
+    // -------------------------------------------------------
+    public IEnumerator PlayIntro()
+    {
+        // 下降中も着地後の停止中も SpawnFall のまま
+        state = BossState.SpawnFall;
+
+        // 下降中は物理に任せず、Kinematicにして transform を直接動かす。
+        // Dynamicのまま速度で下ろすと、地面に触れた時点で物理側が止めてしまい、
+        // Box2Dが接触面に残すわずかな隙間のぶん目標より少し上で停止する。
+        // その状態だと「目標の高さまで下りたか」の判定が永久に成立せず、
+        // 地面の上に乗っているのにSpawnFallから抜けられなくなる
+        rb.linearVelocity = Vector2.zero;
+        rb.gravityScale = 0f;
+        rb.bodyType = RigidbodyType2D.Kinematic;
+
+        // 先に真下の地面を探して、着地するY座標を確定させておく。
+        // IsGrounded のレイはコライダーの底から0.15下までしか届かないので、
+        // 着地の判定にそれを使うと、真下に地面が無かったときにいつまでも抜けられず
+        // 降り続けてしまう（しかも何のエラーも出ない）
+        Vector3 origin = transform.position + (Vector3)coll.offset;
+        RaycastHit2D groundHit = Physics2D.Raycast(origin, Vector2.down, descendMaxDistance, LayerMask.GetMask("Ground"));
+
+        if (!groundHit)
+        {
+            // 地面が無いままだと下りる先が決まらないので、その場で演出を打ち切って戦闘に移る。
+            // Kinematicのままだと宙に浮いて動かなくなるので、必ず元に戻しておく
+            Debug.LogWarning($"BossCtrl: 出現位置 x={transform.position.x} の真下 {descendMaxDistance} 以内に Ground が見つかりません。BossSpawner の位置を地面の上へ移してください", this);
+            RestorePhysics();
+            yield break;
+        }
+
+        // コライダーの底が地面にちょうど接する高さ
+        float targetY = groundHit.point.y + coll.radius - coll.offset.y;
+
+        // targetY まで一定の速さで下ろす。
+        // MoveTowards は行き過ぎずに必ず目標へ収束するので、
+        // 物理の誤差で止まらなくなることがない。
+        // 再生中にインスペクタで descendSpeed を動かせば、その場で速さが変わる
+        while (transform.position.y > targetY)
+        {
+            float y = Mathf.MoveTowards(transform.position.y, targetY, descendSpeed * Time.deltaTime);
+            transform.position = new Vector3(transform.position.x, y, transform.position.z);
+            yield return null;
+        }
+
+        // 着地。物理を元に戻して、以降は通常どおり重力で地面に留まる
+        RestorePhysics();
+
+        yield return new WaitForSeconds(landPauseTime);
+
+        // 戦闘開始直前の登場モーション
+        state = BossState.Begin;
+        yield return new WaitForSeconds(beginTime);
     }
 
     void Update()
@@ -271,6 +376,18 @@ public class BossCtrl : MonoBehaviour
         // ⑥ 復帰後は数秒その場で静止してから、次のルーティンへ
         state = BossState.Idle;
         yield return new WaitForSeconds(stunEndIdleTime);
+    }
+
+    // -------------------------------------------------------
+    // 登場演出のあいだ切っていた物理を元に戻す
+    // bodyType を戻すと constraints が外れることがあるので、あわせて入れ直す
+    // -------------------------------------------------------
+    void RestorePhysics()
+    {
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        rb.linearVelocity = Vector2.zero;
+        rb.gravityScale = defaultGravityScale;
     }
 
     // -------------------------------------------------------
@@ -660,10 +777,12 @@ public class BossCtrl : MonoBehaviour
     // 常にプレイヤーの方を向く。Vultureのスプライトは回転0で左向きなのでEagleCtrlと同じ扱いにする
     // 向き（Y）と気絶時の倒れ込み（Z）をここで合成する。
     // 気絶中は向き直らないので、倒れ込む直前に向いていた方向のまま倒れる
+    // 降りてくる間（SpawnFall）はプレイヤーの方を向く。
+    // 着地後の登場モーション（Begin）では向き直らないので、降りきったときの向きのまま構える
     // -------------------------------------------------------
     void FacePlayer()
     {
-        if (state != BossState.Stun)
+        if (state != BossState.Stun && state != BossState.Begin)
             facingY = player.position.x > transform.position.x ? 0f : 180f;
 
         transform.rotation = Quaternion.Euler(0f, facingY, stunAngle);
@@ -710,5 +829,13 @@ public class BossCtrl : MonoBehaviour
         // 倒れ込みと起き上がりのZ回転は FacePlayer が担当するので、
         // クリップ側は倒れているポーズのスプライトだけを持てばよい
         anim.SetBool("isStun", state == BossState.Stun);
+
+        // SpawnFall：登場演出で出現してから地面に下りきるまで
+        // 着地したあとの停止（landPauseTime）中もここに入る
+        anim.SetBool("isSpawnFall", state == BossState.SpawnFall);
+
+        // Begin：着地後の停止が終わってから戦闘開始までの登場モーション
+        // 再生し終わると Idle に移り、行動①からのルーティンが始まる
+        anim.SetBool("isBegin", state == BossState.Begin);
     }
 }
