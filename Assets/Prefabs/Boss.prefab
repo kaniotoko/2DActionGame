@@ -217,10 +217,10 @@ MonoBehaviour:
   eagleSpawnOffset: 1
   eagleDespawnMargin: 5
   eagleHeights:
-  - 0.2
-  - 1.2
-  - 2.2
-  - 3.2
+  - 1
+  - 2
+  - 3
+  - 4
   eagleWaves:
   - lowerIndex: 0
     upperIndex: 1
@@ -244,6 +244,10 @@ MonoBehaviour:
   - {x: 6, y: 5}
   maxHp: 3
   stompTolerance: 0.5
+  playIntro: 1
+  descendSpeed: 2
+  descendMaxDistance: 100
+  beginTime: 2
   gemPrefab: {fileID: 737956220449250086, guid: bd8d2475d848b4e1b83b849368559edf, type: 3}
   gemSpawnPos: {x: 23.6, y: 5}
   gemGroundY: -1.7
