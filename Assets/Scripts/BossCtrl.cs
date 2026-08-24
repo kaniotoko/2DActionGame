@@ -248,6 +248,12 @@ public class BossCtrl : MonoBehaviour
         // 着地後の間の取りかたは Begin の再生時間（beginTime）で調整する
         state = BossState.Begin;
         yield return new WaitForSeconds(beginTime);
+
+        // Begin を出し終えたらすぐ Idle に戻す。
+        // このあと BossSpawner がカメラをプレイヤーへ戻し終えるまで待ってから
+        // StartBattle を呼ぶので、ここで戻しておかないと
+        // カメラが動いている間ずっと Begin のままになってしまう
+        state = BossState.Idle;
     }
 
     void Update()
