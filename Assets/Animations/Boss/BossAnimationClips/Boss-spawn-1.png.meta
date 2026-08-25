@@ -1,12 +1,5 @@
 fileFormatVersion: 2
-guid: 1c8013ef5a0c147a5a059fde439f12b6
-AssetOrigin:
-  serializedVersion: 1
-  productId: 103349
-  packageName: Sunny Land
-  packageVersion: 1.1
-  assetPath: Assets/SunnyLand Artwork/Sprites/Fx/enemy-death/enemy-death-2.png
-  uploadId: 540939
+guid: 46638559d2f844607ac079061dcb3e01
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -55,7 +48,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 16
+  spritePixelsToUnits: 5
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1

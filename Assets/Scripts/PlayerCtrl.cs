@@ -15,7 +15,25 @@ public class PlayerCrtl : MonoBehaviour
     public float jumpPower;
     public AudioSource jumpSE;
     [HideInInspector] public float platformVelX = 0f;
-    
+
+    //ボスの登場演出など、操作を受け付けたくない間だけ true にする
+    bool isLocked = false;
+
+    // -------------------------------------------------------
+    // 操作を止めて、いま立っているX座標に固定する
+    // 止めるのは入力の読み取りだけで、接地判定・アニメの遷移・重力はそのまま動かす。
+    // ジャンプ中にロックがかかっても、そのまま自然に着地してIdleに戻る
+    // -------------------------------------------------------
+    public void Lock()
+    {
+        isLocked = true;
+    }
+
+    public void Unlock()
+    {
+        isLocked = false;
+    }
+
 
     void Start()
     {
@@ -28,7 +46,7 @@ public class PlayerCrtl : MonoBehaviour
     {
         // 左右の矢印キーやA/Dキーの状態を -1.0 〜 1.0 の数値で取得
         float x = 0;
-        if (Keyboard.current != null)//現在のキーボードが使用可能かどうか（なくてもいい）
+        if (!isLocked && Keyboard.current != null)//現在のキーボードが使用可能かどうか（なくてもいい）
         {
             // A/Dキーや左右矢印キーの押し込み具合を判定
             float left = Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed ? 1f : 0f;
@@ -72,7 +90,7 @@ public class PlayerCrtl : MonoBehaviour
                 isJump = false;
                 anim.SetBool("isJump", false);
             }
-            if(Keyboard.current.spaceKey.wasPressedThisFrame)
+            if(!isLocked && Keyboard.current.spaceKey.wasPressedThisFrame)
             {
                 isJump = true;
                 anim.SetBool("isJump", true);
@@ -89,9 +107,12 @@ public class PlayerCrtl : MonoBehaviour
         //斜面・崖ハジで静止している間だけY座標を固定してずり落ちを防ぐ。
         //条件が外れたフレームでは必ずelse側が代入されるので、空中に固定が残ることはない
         bool freezeY = isGrounded && (onSlope || onEdge) && x == 0 && !isJump;
-        rb.constraints = freezeY
-            ? RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY
-            : RigidbodyConstraints2D.FreezeRotation;
+
+        RigidbodyConstraints2D constraints = RigidbodyConstraints2D.FreezeRotation;
+        if(freezeY) constraints |= RigidbodyConstraints2D.FreezePositionY;
+        //ロック中はX座標を固定する。押されたり滑ったりせず、その場から一切動かなくなる
+        if(isLocked) constraints |= RigidbodyConstraints2D.FreezePositionX;
+        rb.constraints = constraints;
 
         //固定を解除した瞬間は地面に押し付けて、斜面の途中で浮き上がるのを防ぐ
         if(wasFreezeY && !freezeY && !isJump)
