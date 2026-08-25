@@ -24,11 +24,15 @@ public class MainManager : MonoBehaviour
         stageNumber = PlayerPrefs.GetInt("TryStage");
         Instantiate(stages[stageNumber]);
 
-        if (stageNumber < stageShowBG.Length && !stageShowBG[stageNumber])
-        {
-            var bg = Camera.main.transform.Find("BG");
-            if (bg != null) bg.gameObject.SetActive(false);
-        }
+        // stageShowBG が true のステージは通常の背景(BG)、
+        // false のステージは薄暗い背景(DarkBG)に切り替える
+        bool showBG = stageNumber >= stageShowBG.Length || stageShowBG[stageNumber];
+
+        var bg = Camera.main.transform.Find("BG");
+        if (bg != null) bg.gameObject.SetActive(showBG);
+
+        var darkBG = Camera.main.transform.Find("DarkBG");
+        if (darkBG != null) darkBG.gameObject.SetActive(!showBG);
     }
 
     void Update()
