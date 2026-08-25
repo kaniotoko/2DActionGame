@@ -4,7 +4,12 @@ using UnityEngine;
 public class BossSpawner : MonoBehaviour
 {
     public GameObject bossPrefab;
-    public float spawnDistance = 30f; // プレイヤーがどのくらい近づいたら出すか
+    // プレイヤーが横にどのくらい近づいたら出すか。
+    // 他の敵のSpawnerと違いBossSpawnerは空中の高い位置に置くので、
+    // Vector2.Distance で測ると高さの差（十数ユニット）に距離のほとんどを食われてしまい、
+    // 値を大きくしても実際にはかなり近づくまで始まらない。
+    // 高さは無視して横の距離だけで判定する
+    public float spawnDistance = 45f;
     private bool hasSpawned = false;
     public Transform player;
     private GameObject spawnedBoss;
@@ -32,7 +37,7 @@ public class BossSpawner : MonoBehaviour
     {
         if (hasSpawned) return;
 
-        if (Vector2.Distance(transform.position, player.position) < spawnDistance)
+        if (Mathf.Abs(transform.position.x - player.position.x) < spawnDistance)
         {
             // 演出の途中でもう一度入ってこないよう、開始した時点で立てる
             hasSpawned = true;
