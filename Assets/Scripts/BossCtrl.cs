@@ -9,6 +9,7 @@ public class BossCtrl : MonoBehaviour
     CircleCollider2D coll;
     Animator anim;
     SpriteRenderer sr;
+    MainManager mainManager;   // Boss戦BGMの再生／停止を任せる。シーンに常駐しているものを探して持つ
 
     [Header("小ジャンプ設定")]
     public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
@@ -157,6 +158,7 @@ public class BossCtrl : MonoBehaviour
         anim = GetComponent<Animator>();
         sr = GetComponent<SpriteRenderer>();
         player = GameObject.Find("Player").transform;
+        mainManager = FindFirstObjectByType<MainManager>();
         defaultGravityScale = rb.gravityScale;
         hp = maxHp;
 
@@ -187,6 +189,12 @@ public class BossCtrl : MonoBehaviour
     public void StartBattle()
     {
         state = BossState.Idle;
+
+        // 登場演出なしでシーンに直接置いた場合はここが最初のIdleになる。
+        // 演出ありのときは PlayIntro の最後で既に鳴り始めているので、
+        // MainManager 側で二重再生（頭出しのやり直し）を防いでいる
+        if (mainManager != null) mainManager.PlayBossBGM();
+
         StartCoroutine(BossRoutine());
     }
 
@@ -254,6 +262,11 @@ public class BossCtrl : MonoBehaviour
         // StartBattle を呼ぶので、ここで戻しておかないと
         // カメラが動いている間ずっと Begin のままになってしまう
         state = BossState.Idle;
+
+        // 登場モーションを出し終えて最初にIdleになったこの瞬間からBGMを鳴らす。
+        // カメラがプレイヤーへ戻り始めるのと同時に鳴り出し、
+        // 実際に動き出す（StartBattle）ころには曲が立ち上がっている
+        if (mainManager != null) mainManager.PlayBossBGM();
     }
 
     void Update()
@@ -457,6 +470,11 @@ public class BossCtrl : MonoBehaviour
 
         if (hp <= 0)
         {
+            // 撃破。Boss戦のBGMを止める（撃破後はとりあえず無音）。
+            // AudioSourceはBoss本体ではなくMainManagerに置いてあるので、
+            // Destroy したあともGemの降下中に鳴り続けてしまわないよう明示的に止める
+            if (mainManager != null) mainManager.StopBossBGM();
+
             // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
             DespawnStunPlatforms();
 
