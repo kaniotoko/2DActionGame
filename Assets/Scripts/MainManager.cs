@@ -20,6 +20,7 @@ public class MainManager : MonoBehaviour
     public AudioSource stageBGM;    // 通常ステージのBGM。Main Camera の子の BGM オブジェクトをセットする
     public AudioSource preBossBGM;  // Boss戦前.mp3。ステージ10に入ってからBossが現れるまで
     public AudioSource bossBGM;     // Boss戦.mp3。Bossが動き出してから撃破するまで
+    public AudioSource clearBossBGM;// ClearBoss.mp3。Bossを撃破してからGemを取るまで
 
     // Boss戦のステージ番号（0始まり）。stages[] の添字と同じなので、ステージ10なら9。
     // このステージだけ stageBGM ではなく preBossBGM から始める
@@ -94,13 +95,29 @@ public class MainManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // Boss戦のBGMを止める
-    // 撃破時（BossCtrl）のほか、ゲームオーバー／クリアからも呼ばれる。
-    // 撃破後はとりあえず無音にしたいので、ここで別のBGMを鳴らし直すことはしない
+    // Boss撃破後のBGMに切り替える（BossCtrl から呼ばれる）
+    // Bossを倒してからGemを取る（GameClear）までの間だけ鳴らす。
+    // Gemは倒したあとゆっくり降りてくるので、その間を無音にしないための曲
+    // -------------------------------------------------------
+    public void PlayClearBossBGM()
+    {
+        StopBGM(bossBGM);
+
+        if (clearBossBGM == null || clearBossBGM.isPlaying) return;
+
+        clearBossBGM.loop = true;
+        clearBossBGM.Play();
+    }
+
+    // -------------------------------------------------------
+    // Boss戦まわりのBGMを止める
+    // ゲームオーバー／クリアから呼ばれる。
+    // どちらの曲が鳴っている最中でも止まるよう、まとめて止めておく
     // -------------------------------------------------------
     public void StopBossBGM()
     {
         StopBGM(bossBGM);
+        StopBGM(clearBossBGM);
     }
 
     // -------------------------------------------------------
