@@ -440,6 +440,7 @@ GameObject:
   - component: {fileID: 931439622}
   - component: {fileID: 931439624}
   - component: {fileID: 931439623}
+  - component: {fileID: 931439625}
   m_Layer: 5
   m_Name: ThanksText
   m_TagString: Untagged
@@ -566,6 +567,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 931439621}
   m_CullTransparentMesh: 1
+--- !u!114 &931439625
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 931439621}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b63d944adc3a6491dabcc2aea180a2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SlideInCtrl
+  startDelay: 0.3
+  duration: 6
+  startOffsetY: 1000
+  activateOnComplete:
+  - {fileID: 1573007184}
+  - {fileID: 1954797579}
 --- !u!1 &961739749
 GameObject:
   m_ObjectHideFlags: 0
