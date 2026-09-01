@@ -6,9 +6,12 @@ using UnityEngine.SceneManagement;
 // 「Thank you for playing」を見せて、クリック／キー入力でタイトルに戻す
 public class FinishCtrl : MonoBehaviour
 {
-    // 表示した瞬間の押しっぱなしでスキップされないように、この秒数は入力を受け付けない
-    public float inputDelay = 1.5f;
-    // 「クリックでタイトルへ」の案内テキスト。inputDelay を過ぎてから表示する。
+    // 案内テキストが出てから入力を受け付けるまでの秒数。
+    // 表示した瞬間の押しっぱなしでスキップされるのを防ぐ
+    public float inputDelay = 0.5f;
+    // 「クリックでタイトルへ」の案内テキスト。
+    // 表示のタイミングは ThanksText の SlideInCtrl が管理しているので、
+    // ここでは「表示されたか」を入力受付の合図として見るだけ。
     // 未設定でも動くので、案内がいらなければ空のままでよい
     public GameObject pressAnyKeyText;
 
@@ -18,19 +21,15 @@ public class FinishCtrl : MonoBehaviour
     {
         // MainScene 側で 0 にした時間が残っている場合があるので戻しておく
         Time.timeScale = 1;
-
-        if (pressAnyKeyText != null) pressAnyKeyText.SetActive(false);
     }
 
     void Update()
     {
+        // ThanksText が降りきって案内テキストが表示されるまでは受け付けない
+        if (pressAnyKeyText != null && !pressAnyKeyText.activeSelf) return;
+
         elapsed += Time.deltaTime;
         if (elapsed < inputDelay) return;
-
-        if (pressAnyKeyText != null && !pressAnyKeyText.activeSelf)
-        {
-            pressAnyKeyText.SetActive(true);
-        }
 
         if (IsAnyInput())
         {
