@@ -851,6 +851,7 @@ GameObject:
   - component: {fileID: 1954797580}
   - component: {fileID: 1954797582}
   - component: {fileID: 1954797581}
+  - component: {fileID: 1954797583}
   m_Layer: 5
   m_Name: PressAnyKeyText
   m_TagString: Untagged
@@ -897,7 +898,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Click to got to the title
+  m_text: Click to go to the title
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 999b1b43ba6df476aa9e9d13059b42f0, type: 2}
   m_sharedMaterial: {fileID: -2073815007360827174, guid: 999b1b43ba6df476aa9e9d13059b42f0, type: 2}
@@ -977,6 +978,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1954797579}
   m_CullTransparentMesh: 1
+--- !u!114 &1954797583
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1954797579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e5683572c7fe4b10905f4df3efe0615, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FadeBlinkCtrl
+  cycleDuration: 2
+  minAlpha: 0
+  maxAlpha: 1
 --- !u!1 &1969365060
 GameObject:
   m_ObjectHideFlags: 0
