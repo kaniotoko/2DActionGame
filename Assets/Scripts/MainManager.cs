@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -23,6 +24,12 @@ public class MainManager : MonoBehaviour
     // Boss戦のステージ番号（0始まり）。stages[] の添字と同じなので、ステージ10なら9。
     // このステージだけ stageBGM ではなく preBossBGM から始める
     public int bossStageNumber = 9;
+
+    [Header("エンディング")]
+    // 最終ステージをクリアしたときに読み込むシーン。Build Settings に登録しておくこと
+    public string finishSceneName = "FinishScene";
+    // ゴールSEを聞かせてからエンディングに切り替えるまでの待ち時間（秒）
+    public float finishSceneDelay = 2f;
 
     void Start()
     {
@@ -116,12 +123,41 @@ public class MainManager : MonoBehaviour
     {
         StopBossBGM();
         goalSE.Play();
-        gameClearView.SetActive(true);
         Time.timeScale = 0;
         if(stageNumber > PlayerPrefs.GetInt("ClearStage"))
         {
             PlayerPrefs.SetInt("ClearStage", stageNumber); //PlayerPrefsは端末にデータを保存してくれる(ClearStageという名前で、stageNumberに保存してくれる)
         }
+
+        // 最終ステージには「つぎへ」の行き先がないので、
+        // クリア画面を出さずにそのままエンディングへ送る
+        if (IsFinalStage())
+        {
+            StartCoroutine(LoadFinishScene());
+            return;
+        }
+
+        gameClearView.SetActive(true);
+    }
+
+    // -------------------------------------------------------
+    // いま遊んでいるのが stages[] の最後のステージかどうか
+    // -------------------------------------------------------
+    bool IsFinalStage()
+    {
+        return stageNumber >= stages.Length - 1;
+    }
+
+    // -------------------------------------------------------
+    // ゴールSEを少し聞かせてからエンディングへ
+    // GameClear() で Time.timeScale = 0 にしているので、
+    // その影響を受けない WaitForSecondsRealtime で待つ
+    // -------------------------------------------------------
+    IEnumerator LoadFinishScene()
+    {
+        yield return new WaitForSecondsRealtime(finishSceneDelay);
+        Time.timeScale = 1;
+        SceneManager.LoadScene(finishSceneName);
     }
 
     public void Retry()
@@ -132,6 +168,15 @@ public class MainManager : MonoBehaviour
 
     public void Next()
     {
+        // 最終ステージでは押せないUIだが、押されても stages[] の範囲外を
+        // 読みに行かないようにエンディングへ逃がしておく
+        if (IsFinalStage())
+        {
+            Time.timeScale = 1;
+            SceneManager.LoadScene(finishSceneName);
+            return;
+        }
+
         PlayerPrefs.SetInt("TryStage", stageNumber + 1);
         LoadMainScene();
     }
