@@ -125,6 +125,10 @@ public class BossCtrl : MonoBehaviour
     public float damageBlinkTime = 1.5f;     // 踏まれてから点滅し続ける時間
     public float damageBlinkInterval = 0.08f;// 表示／非表示を切り替える間隔。小さいほど速く点滅する
 
+    // BossDamage.mp3 を鳴らす AudioSource。Boss.prefab に付けたものをセットする。
+    // 点滅している間ずっと鳴らすので、Loopをオン・Play On Awakeをオフにしておくこと
+    public AudioSource damageSE;
+
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
 
@@ -271,6 +275,12 @@ public class BossCtrl : MonoBehaviour
 
     void Update()
     {
+        // ゲームオーバー／クリアで時間が止まったら、ループ中の被ダメージSEを止める。
+        // Time.timeScale = 0 でも音は止まらないうえ、点滅のコルーチンも
+        // WaitForSeconds で待ったまま進まないので、放っておくと鳴り続けてしまう
+        // （Update自体は timeScale = 0 でも呼ばれるのでここで面倒を見られる）
+        if (Time.timeScale == 0f) StopDamageSE();
+
         if (player == null) return;
 
         FacePlayer();
@@ -513,12 +523,10 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     void StartDamageBlink()
     {
-        if (sr == null) return;
-
         if (blinkRoutine != null)
         {
             StopCoroutine(blinkRoutine);
-            sr.enabled = true; // 消えたまま止まらないように戻しておく
+            if (sr != null) sr.enabled = true; // 消えたまま止まらないように戻しておく
         }
 
         blinkRoutine = StartCoroutine(DamageBlinkRoutine());
@@ -537,15 +545,29 @@ public class BossCtrl : MonoBehaviour
         // 0以下だと切り替えが進まず無限ループになるので下限を設ける
         float interval = Mathf.Max(0.02f, damageBlinkInterval);
 
+        // 点滅と同じ長さだけ鳴らす。SE（0.4秒ほど）のほうが点滅より短いので、
+        // AudioSource側のLoopをオンにしておき、点滅を終えるときにここで止める
+        if (damageSE != null) damageSE.Play();
+
         for (float elapsed = 0f; elapsed < damageBlinkTime; elapsed += interval)
         {
-            sr.enabled = !sr.enabled;
+            if (sr != null) sr.enabled = !sr.enabled;
             yield return new WaitForSeconds(interval);
         }
 
         // 何回切り替えて終わっても、必ず表示された状態で終える
-        sr.enabled = true;
+        if (sr != null) sr.enabled = true;
+        StopDamageSE();
         blinkRoutine = null;
+    }
+
+    // -------------------------------------------------------
+    // 被ダメージSEを止める
+    // 点滅を終えたときのほか、Update からゲームが止まったときにも呼ぶ
+    // -------------------------------------------------------
+    void StopDamageSE()
+    {
+        if (damageSE != null && damageSE.isPlaying) damageSE.Stop();
     }
 
     // -------------------------------------------------------
