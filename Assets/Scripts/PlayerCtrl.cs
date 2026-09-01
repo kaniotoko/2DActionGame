@@ -104,6 +104,29 @@ public class PlayerCrtl : MonoBehaviour
             anim.SetBool("isFall", true);
         }
 
+        //進行方向側のレイを優先して、いま踏んでいる地面の傾きを取得する。
+        //transform.right は左向きのとき反転するので、Forward側のレイは常に進行方向側になる
+        RaycastHit2D groundRefHit = (bool)slopeHitForward ? slopeHitForward
+                                  : (bool)edgeHitForward  ? edgeHitForward
+                                  : (bool)slopeHitBack    ? slopeHitBack
+                                  : edgeHitBack;
+
+        //坂を登り切った直後は、坂に沿って得た上向きの速度がそのまま残って平地でも浮いてしまう。
+        //地面の法線から「その傾きなら本来出るはずの上向き速度」を求め、それを超えた分だけ削る。
+        //平地（法線が真上）なら上限0になるので残留分が消え、坂の途中では上限が大きいので登坂の邪魔をしない
+        if(isGrounded && !isJump && rb.linearVelocityY > 0f && groundRefHit)
+        {
+            Vector2 groundNormal = groundRefHit.normal;
+            float slopeTan = Mathf.Abs(groundNormal.x) / Mathf.Max(groundNormal.y, 0.01f);
+            float allowedUpY = Mathf.Abs(rb.linearVelocityX) * slopeTan;
+
+            //タイルの継ぎ目などの微小な誤差で毎フレーム削らないよう、少しだけ余裕を持たせる
+            if(rb.linearVelocityY > allowedUpY + 0.1f)
+            {
+                rb.linearVelocityY = allowedUpY;
+            }
+        }
+
         //斜面・崖ハジで静止している間だけY座標を固定してずり落ちを防ぐ。
         //条件が外れたフレームでは必ずelse側が代入されるので、空中に固定が残ることはない
         bool freezeY = isGrounded && (onSlope || onEdge) && x == 0 && !isJump;
