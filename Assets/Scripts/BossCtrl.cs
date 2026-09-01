@@ -470,10 +470,10 @@ public class BossCtrl : MonoBehaviour
 
         if (hp <= 0)
         {
-            // 撃破。Boss戦のBGMを止める（撃破後はとりあえず無音）。
+            // 撃破。Boss戦のBGMを撃破後のBGMに切り替える。
             // AudioSourceはBoss本体ではなくMainManagerに置いてあるので、
-            // Destroy したあともGemの降下中に鳴り続けてしまわないよう明示的に止める
-            if (mainManager != null) mainManager.StopBossBGM();
+            // このあと Destroy されてもGemを取るまで鳴り続けられる
+            if (mainManager != null) mainManager.PlayClearBossBGM();
 
             // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
             DespawnStunPlatforms();
