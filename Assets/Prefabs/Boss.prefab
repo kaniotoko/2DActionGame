@@ -245,7 +245,7 @@ MonoBehaviour:
   - {x: -6, y: 5}
   - {x: 9, y: 2.5}
   - {x: 6, y: 5}
-  maxHp: 1
+  maxHp: 3
   stompTolerance: 0.5
   playIntro: 1
   descendSpeed: 2
