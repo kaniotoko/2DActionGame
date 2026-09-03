@@ -115,6 +115,15 @@ public class BossCtrl : MonoBehaviour
     public float descendMaxDistance = 100f; // 出現位置から真下にこの距離まで地面を探す
     public float beginTime = 3.5f;        // 着地してから戦闘開始までの間、登場モーション（Begin）を再生する時間
 
+    [Header("撃破演出")]
+    // 気絶中にHPが0になったら、その場で消さずにこの流れで撃破を見せる。
+    // PreDeath（点滅しながら3秒）→ Death（1巡）→ 消滅 → Gem出現
+    public float preDeathTime = 3f;      // PreDeathのまま点滅し続ける時間
+    // Deathのクリップ1巡ぶんの長さ。Begin（beginTime）と同じく、クリップの長さを手で入れる。
+    // Deathのクリップは Loop Time をオフにしておくこと
+    public float deathTime = 1f;
+    public float gemSpawnDelay = 0.3f;   // Bossの姿が消えてからGemを出すまでの間
+
     [Header("撃破後のGem")]
     public GameObject gemPrefab;                          // Gem.prefab をセットする
     public Vector2 gemSpawnPos = new Vector2(23.6f, 5f);  // 空中に出す位置
@@ -134,7 +143,7 @@ public class BossCtrl : MonoBehaviour
 
     // アニメーションの状態は必ずこの enum を正とし、Animator の bool は SyncAnimatorParams で導出する
     // （bool を個別に持つと isIdle と isSJump が同時に true になる不整合が起きうるため）
-    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun, SpawnFall, Begin }
+    public enum BossState { Idle, SmallJump, BigJump, Fall1, MoveJump, HighJump, Fall2, Stun, SpawnFall, Begin, PreDeath, Death }
 
     float defaultGravityScale;
     float facingY = 0f;                                            // 向きを表すY回転。0で右向き、180で左向き
@@ -480,26 +489,75 @@ public class BossCtrl : MonoBehaviour
 
         if (hp <= 0)
         {
-            // 撃破。Boss戦のBGMを撃破後のBGMに切り替える。
-            // AudioSourceはBoss本体ではなくMainManagerに置いてあるので、
-            // このあと Destroy されてもGemを取るまで鳴り続けられる
-            if (mainManager != null) mainManager.PlayClearBossBGM();
-
-            // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
-            DespawnStunPlatforms();
-
-            // クリア用のGemを空中に出す。降下はGem側（GemCtrl）が続けるので、
-            // このあとBossが消えても止まらない
-            SpawnGem();
-
-            Destroy(gameObject);
+            // 撃破。行動のルーティン（BossRoutine）も気絶（StunRoutine）も
+            // ここで打ち切って、撃破演出だけを回す。
+            // StopAllCoroutines のあとに始めれば DeathRoutine 自身は巻き添えにならない
+            StopAllCoroutines();
+            StartCoroutine(DeathRoutine());
             return;
         }
 
         // ダメージが入ったことを見せる点滅。
         // 気絶の打ち切り → 起き上がり → 復帰後の静止 をまたいで続くので、
         // 行動のコルーチン（BossRoutine）とは独立して回す
-        StartDamageBlink();
+        StartDamageBlink(damageBlinkTime, true);
+    }
+
+    // -------------------------------------------------------
+    // 撃破演出
+    // PreDeathで点滅しながら preDeathTime 秒 → Deathを1巡 → 姿を消す → Gem出現
+    //
+    // Stomped から StopAllCoroutines のあとに開始されるので、
+    // 途中で他の行動や気絶の処理に割り込まれることはない
+    // -------------------------------------------------------
+    IEnumerator DeathRoutine()
+    {
+        // その場で動きを止める。重力はそのままなので地面の上に留まる
+        rb.linearVelocity = Vector2.zero;
+
+        // ここから先はプレイヤーがぶつかっても何も起きないようにする。
+        // IsStunned が false になった瞬間から、瀕死のBossに触れただけで
+        // ゲームオーバーになってしまうため（PlayerCrtl の Boss レイヤーの分岐）。
+        // レイヤーごとではなく個体ごとに切るのは、登場演出やイーグルと同じ
+        Collider2D playerColl = player != null ? player.GetComponent<Collider2D>() : null;
+        if (playerColl != null) Physics2D.IgnoreCollision(coll, playerColl, true);
+
+        // Bossを消すとコルーチンも止まるので、出しっぱなしの足場はここで片付ける
+        DespawnStunPlatforms();
+
+        // StopAllCoroutines で点滅が途中で止まっていた場合、
+        // ループ再生中の被ダメージSEが鳴りっぱなしになるので念のため止めておく
+        StopDamageSE();
+
+        // ① PreDeath：倒れた姿勢を起こして、ダメージのときと同じように点滅させる。
+        //    撃破のSEはまだ無いので、ここでは音を鳴らさない
+        stunAngle = 0f;
+        state = BossState.PreDeath;
+        StartDamageBlink(preDeathTime, false);
+        yield return new WaitForSeconds(preDeathTime);
+
+        // ② Death：クリップを1巡ぶん再生する。
+        //    点滅は必ずここで止める。放っておくと切り替えの間隔ぶんだけ
+        //    Deathに入ってからも点滅が続いてしまう
+        StopDamageBlink();
+        state = BossState.Death;
+        yield return new WaitForSeconds(deathTime);
+
+        // ③ 姿を消す。GameObject の Destroy はGemを出したあとだが、
+        //    見た目はここで消えるので「Bossが消滅してからGemが出る」順序になる
+        if (sr != null) sr.enabled = false;
+        yield return new WaitForSeconds(gemSpawnDelay);
+
+        // ④ 撃破後のBGMに切り替える。
+        //    AudioSourceはBoss本体ではなくMainManagerに置いてあるので、
+        //    このあと Destroy されてもGemを取るまで鳴り続けられる
+        if (mainManager != null) mainManager.PlayClearBossBGM();
+
+        // ⑤ クリア用のGemを空中に出す。降下はGem側（GemCtrl）が続けるので、
+        //    このあとBossが消えても止まらない
+        SpawnGem();
+
+        Destroy(gameObject);
     }
 
     // -------------------------------------------------------
@@ -518,38 +576,47 @@ public class BossCtrl : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // 被ダメージの点滅を開始する
-    // 点滅中にもう一度踏まれた場合は、前の点滅を止めてから鳴らし直す
+    // 点滅を開始する
+    // 点滅中にもう一度呼ばれた場合は、前の点滅を止めてから回し直す
+    // duration：点滅し続ける時間。被ダメージと撃破（PreDeath）で長さが違う
+    // playSE   ：被ダメージSEを鳴らすか。撃破演出では鳴らさない
     // -------------------------------------------------------
-    void StartDamageBlink()
+    void StartDamageBlink(float duration, bool playSE)
     {
-        if (blinkRoutine != null)
-        {
-            StopCoroutine(blinkRoutine);
-            if (sr != null) sr.enabled = true; // 消えたまま止まらないように戻しておく
-        }
-
-        blinkRoutine = StartCoroutine(DamageBlinkRoutine());
+        StopDamageBlink();
+        blinkRoutine = StartCoroutine(DamageBlinkRoutine(duration, playSE));
     }
 
     // -------------------------------------------------------
-    // damageBlinkTime 秒のあいだ、スプライトの表示／非表示を繰り返す
+    // 実行中の点滅を止める
+    // 途中で止めてもスプライトが消えたままにならないよう、必ず表示に戻す
+    // -------------------------------------------------------
+    void StopDamageBlink()
+    {
+        if (blinkRoutine != null) StopCoroutine(blinkRoutine);
+        blinkRoutine = null;
+
+        if (sr != null) sr.enabled = true;
+    }
+
+    // -------------------------------------------------------
+    // duration 秒のあいだ、スプライトの表示／非表示を繰り返す
     //
     // 既存のクリップは m_Sprite しか動かしていないので、SpriteRenderer の enabled を
     // ここで切り替えてもAnimatorと取り合いにならない。
     // Animatorのレイヤーは同時に1つのstateしか再生できず、点滅用のstateを作ると
     // その間モーションが止まってしまうため、演出はアニメーションではなくコードで持つ
     // -------------------------------------------------------
-    IEnumerator DamageBlinkRoutine()
+    IEnumerator DamageBlinkRoutine(float duration, bool playSE)
     {
         // 0以下だと切り替えが進まず無限ループになるので下限を設ける
         float interval = Mathf.Max(0.02f, damageBlinkInterval);
 
         // 点滅と同じ長さだけ鳴らす。SE（0.4秒ほど）のほうが点滅より短いので、
         // AudioSource側のLoopをオンにしておき、点滅を終えるときにここで止める
-        if (damageSE != null) damageSE.Play();
+        if (playSE && damageSE != null) damageSE.Play();
 
-        for (float elapsed = 0f; elapsed < damageBlinkTime; elapsed += interval)
+        for (float elapsed = 0f; elapsed < duration; elapsed += interval)
         {
             if (sr != null) sr.enabled = !sr.enabled;
             yield return new WaitForSeconds(interval);
@@ -826,7 +893,9 @@ public class BossCtrl : MonoBehaviour
     // -------------------------------------------------------
     void FacePlayer()
     {
-        if (state != BossState.Stun && state != BossState.Begin)
+        // 撃破演出中（PreDeath／Death）も向き直らない。倒れる直前の向きのまま最期を迎える
+        if (state != BossState.Stun && state != BossState.Begin
+            && state != BossState.PreDeath && state != BossState.Death)
             facingY = player.position.x > transform.position.x ? 0f : 180f;
 
         transform.rotation = Quaternion.Euler(0f, facingY, stunAngle);
@@ -881,5 +950,13 @@ public class BossCtrl : MonoBehaviour
         // Begin：着地してから戦闘開始までの登場モーション
         // 再生し終わると Idle に移り、行動①からのルーティンが始まる
         anim.SetBool("isBegin", state == BossState.Begin);
+
+        // PreDeath：気絶中にHPが0になってから、Deathに移るまで
+        // Stun からここへ移った時点で isStun は false になるので、
+        // コントローラ側の遷移条件は isPreDeath だけでよい
+        anim.SetBool("isPreDeath", state == BossState.PreDeath);
+
+        // Death：撃破のモーション。1巡ぶん再生し終わるとBossが消える
+        anim.SetBool("isDeath", state == BossState.Death);
     }
 }
