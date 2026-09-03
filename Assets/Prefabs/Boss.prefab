@@ -243,12 +243,15 @@ MonoBehaviour:
   - {x: -6, y: 5}
   - {x: 9, y: 2.5}
   - {x: 6, y: 5}
-  maxHp: 3
+  maxHp: 1
   stompTolerance: 0.5
   playIntro: 1
   descendSpeed: 2
   descendMaxDistance: 100
   beginTime: 2
+  preDeathTime: 3
+  deathTime: 1
+  gemSpawnDelay: 0.3
   gemPrefab: {fileID: 737956220449250086, guid: bd8d2475d848b4e1b83b849368559edf, type: 3}
   gemSpawnPos: {x: 23.6, y: 5}
   gemGroundY: -1.7
