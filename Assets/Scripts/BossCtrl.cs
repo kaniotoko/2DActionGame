@@ -123,7 +123,9 @@ public class BossCtrl : MonoBehaviour
     // Deathのクリップ1巡ぶんの長さ。Begin（beginTime）と同じく、クリップの長さを手で入れる。
     // Deathのクリップは Loop Time をオフにしておくこと
     public float deathTime = 1f;
-    public float gemSpawnDelay = 0.3f;   // Bossの姿が消えてからGemを出すまでの間
+    // Bossの姿が消えてからGemを出す（＝撃破後のBGMを鳴らし始める）までの間。
+    // BGMもSEも鳴っていない無音の数秒になるので、撃破の余韻をここで作る
+    public float gemSpawnDelay = 2f;
     // 撃破演出のあいだカメラをBossへ寄せる。登場演出（BossSpawner）と同じ寄せかた・同じ既定値
     public float cameraBlendTime = 1.5f;
 
@@ -140,6 +142,15 @@ public class BossCtrl : MonoBehaviour
     // BossDamage.mp3 を鳴らす AudioSource。Boss.prefab に付けたものをセットする。
     // 点滅している間ずっと鳴らすので、Loopをオン・Play On Awakeをオフにしておくこと
     public AudioSource damageSE;
+
+    // BossPreDeath.mp3 を鳴らす AudioSource。同じく Boss.prefab に付けたものをセットする。
+    // クリップは約1.3秒でPreDeathの3秒より短いので、
+    // 鳴らし続けたいなら Loop をオン、1回だけ鳴らすならオフにする（Play On Awake はオフ）
+    public AudioSource preDeathSE;
+
+    // BossDeath.mp3 を鳴らす AudioSource。Loop・Play On Awake ともにオフにしておくこと。
+    // Deathの状態が終わってからも、Bossが消えるまでは鳴らし続ける（約3.0秒を最後まで聴かせる）
+    public AudioSource deathSE;
 
     [Header("デバッグ")]
     public BossState state = BossState.Idle;
@@ -292,7 +303,12 @@ public class BossCtrl : MonoBehaviour
         // Time.timeScale = 0 でも音は止まらないうえ、点滅のコルーチンも
         // WaitForSeconds で待ったまま進まないので、放っておくと鳴り続けてしまう
         // （Update自体は timeScale = 0 でも呼ばれるのでここで面倒を見られる）
-        if (Time.timeScale == 0f) StopDamageSE();
+        if (Time.timeScale == 0f)
+        {
+            StopSE(damageSE);
+            StopSE(preDeathSE);
+            StopSE(deathSE);
+        }
 
         if (player == null) return;
 
@@ -531,7 +547,11 @@ public class BossCtrl : MonoBehaviour
 
         // StopAllCoroutines で点滅が途中で止まっていた場合、
         // ループ再生中の被ダメージSEが鳴りっぱなしになるので念のため止めておく
-        StopDamageSE();
+        StopSE(damageSE);
+
+        // 撃破演出の間はBGMを鳴らさず、専用のSEだけを聴かせる。
+        // 撃破後のBGM（ClearBoss.mp3）はDeathを再生し終えた⑤で鳴らし始める
+        if (mainManager != null) mainManager.StopBossBGM();
 
         // ① カメラをBossへ寄せる。登場演出（SpawnFall／Begin）と同じ見せかたで、
         //    PreDeathからDeathを再生し終えるまでBossを画面の中心に置く。
@@ -539,21 +559,27 @@ public class BossCtrl : MonoBehaviour
         if (cameraCtrl != null) cameraCtrl.SetTarget(transform, cameraBlendTime);
 
         // ② PreDeath：倒れた姿勢を起こして、ダメージのときと同じように点滅させる。
-        //    撃破のSEはまだ無いので、ここでは音を鳴らさない
+        //    鳴らすのは被ダメージSEではなくPreDeath専用のSEなので、
+        //    点滅側には音を鳴らさせない（StartDamageBlink の第2引数が false）
         stunAngle = 0f;
         state = BossState.PreDeath;
         StartDamageBlink(preDeathTime, false);
+        if (preDeathSE != null) preDeathSE.Play();
         yield return new WaitForSeconds(preDeathTime);
 
         // ③ Death：クリップを1巡ぶん再生する。
         //    点滅は必ずここで止める。放っておくと切り替えの間隔ぶんだけ
         //    Deathに入ってからも点滅が続いてしまう
         StopDamageBlink();
+        StopSE(preDeathSE);   // Loopをオンにしているときは、ここで止めないと鳴り続ける
         state = BossState.Death;
+        if (deathSE != null) deathSE.Play();
         yield return new WaitForSeconds(deathTime);
 
-        // ④ 姿を消す。GameObject の Destroy はGemを出したあとだが、
-        //    見た目はここで消えるので「Bossが消滅してからGemが出る」順序になる
+        // ④ 姿を消して、Gemを出すまで少し間を置く。
+        //    GameObject の Destroy はGemを出したあとだが、見た目はここで消えるので
+        //    「Bossが消滅してからGemが出る」順序になる。
+        //    この間はBGMもSEも鳴っていないので、そのまま撃破の余韻になる
         if (sr != null) sr.enabled = false;
         yield return new WaitForSeconds(gemSpawnDelay);
 
@@ -575,6 +601,12 @@ public class BossCtrl : MonoBehaviour
             cameraCtrl.ResetTarget(cameraBlendTime);
             yield return new WaitForSeconds(cameraBlendTime);
         }
+
+        // ⑧ Bossを消す直前に、まだ鳴っていればDeathのSEを止める。
+        //    ここまでに deathTime ＋ gemSpawnDelay ＋ cameraBlendTime かかるので、
+        //    既定値ならクリップ（約3.0秒）は鳴り終わっている。
+        //    これらを短くしたときに、Destroy で音がぶつ切りにならないための保険
+        StopSE(deathSE);
 
         Destroy(gameObject);
     }
@@ -643,17 +675,18 @@ public class BossCtrl : MonoBehaviour
 
         // 何回切り替えて終わっても、必ず表示された状態で終える
         if (sr != null) sr.enabled = true;
-        StopDamageSE();
+        StopSE(damageSE);
         blinkRoutine = null;
     }
 
     // -------------------------------------------------------
-    // 被ダメージSEを止める
+    // SEを止める
     // 点滅を終えたときのほか、Update からゲームが止まったときにも呼ぶ
+    // AudioSource が未設定でも落ちないようにするための小道具（MainManager の StopBGM と同じ）
     // -------------------------------------------------------
-    void StopDamageSE()
+    void StopSE(AudioSource se)
     {
-        if (damageSE != null && damageSE.isPlaying) damageSE.Stop();
+        if (se != null && se.isPlaying) se.Stop();
     }
 
     // -------------------------------------------------------
