@@ -10,6 +10,7 @@ public class BossCtrl : MonoBehaviour
     Animator anim;
     SpriteRenderer sr;
     MainManager mainManager;   // Boss戦BGMの再生／停止を任せる。シーンに常駐しているものを探して持つ
+    CameraCtrl cameraCtrl;     // 撃破演出でカメラをBossへ寄せる。こちらもシーンに常駐しているものを探して持つ
 
     [Header("小ジャンプ設定")]
     public float smallJumpPowerY = 13f;   // 小ジャンプの上向きの初速
@@ -123,6 +124,8 @@ public class BossCtrl : MonoBehaviour
     // Deathのクリップは Loop Time をオフにしておくこと
     public float deathTime = 1f;
     public float gemSpawnDelay = 0.3f;   // Bossの姿が消えてからGemを出すまでの間
+    // 撃破演出のあいだカメラをBossへ寄せる。登場演出（BossSpawner）と同じ寄せかた・同じ既定値
+    public float cameraBlendTime = 1.5f;
 
     [Header("撃破後のGem")]
     public GameObject gemPrefab;                          // Gem.prefab をセットする
@@ -172,6 +175,7 @@ public class BossCtrl : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
         player = GameObject.Find("Player").transform;
         mainManager = FindFirstObjectByType<MainManager>();
+        cameraCtrl = FindFirstObjectByType<CameraCtrl>();
         defaultGravityScale = rb.gravityScale;
         hp = maxHp;
 
@@ -529,33 +533,48 @@ public class BossCtrl : MonoBehaviour
         // ループ再生中の被ダメージSEが鳴りっぱなしになるので念のため止めておく
         StopDamageSE();
 
-        // ① PreDeath：倒れた姿勢を起こして、ダメージのときと同じように点滅させる。
+        // ① カメラをBossへ寄せる。登場演出（SpawnFall／Begin）と同じ見せかたで、
+        //    PreDeathからDeathを再生し終えるまでBossを画面の中心に置く。
+        //    プレイヤーの操作は止めないので、寄っている間もプレイヤーは動ける
+        if (cameraCtrl != null) cameraCtrl.SetTarget(transform, cameraBlendTime);
+
+        // ② PreDeath：倒れた姿勢を起こして、ダメージのときと同じように点滅させる。
         //    撃破のSEはまだ無いので、ここでは音を鳴らさない
         stunAngle = 0f;
         state = BossState.PreDeath;
         StartDamageBlink(preDeathTime, false);
         yield return new WaitForSeconds(preDeathTime);
 
-        // ② Death：クリップを1巡ぶん再生する。
+        // ③ Death：クリップを1巡ぶん再生する。
         //    点滅は必ずここで止める。放っておくと切り替えの間隔ぶんだけ
         //    Deathに入ってからも点滅が続いてしまう
         StopDamageBlink();
         state = BossState.Death;
         yield return new WaitForSeconds(deathTime);
 
-        // ③ 姿を消す。GameObject の Destroy はGemを出したあとだが、
+        // ④ 姿を消す。GameObject の Destroy はGemを出したあとだが、
         //    見た目はここで消えるので「Bossが消滅してからGemが出る」順序になる
         if (sr != null) sr.enabled = false;
         yield return new WaitForSeconds(gemSpawnDelay);
 
-        // ④ 撃破後のBGMに切り替える。
+        // ⑤ 撃破後のBGMに切り替える。
         //    AudioSourceはBoss本体ではなくMainManagerに置いてあるので、
         //    このあと Destroy されてもGemを取るまで鳴り続けられる
         if (mainManager != null) mainManager.PlayClearBossBGM();
 
-        // ⑤ クリア用のGemを空中に出す。降下はGem側（GemCtrl）が続けるので、
+        // ⑥ クリア用のGemを空中に出す。降下はGem側（GemCtrl）が続けるので、
         //    このあとBossが消えても止まらない
         SpawnGem();
+
+        // ⑦ カメラをプレイヤーへ戻す。
+        //    戻し終わるまで待ってから Destroy すること。
+        //    CameraCtrl は追尾先が破棄されると target が null になって
+        //    その場から動かなくなるため、Bossを消す前に追尾先をプレイヤーへ移す必要がある
+        if (cameraCtrl != null)
+        {
+            cameraCtrl.ResetTarget(cameraBlendTime);
+            yield return new WaitForSeconds(cameraBlendTime);
+        }
 
         Destroy(gameObject);
     }
