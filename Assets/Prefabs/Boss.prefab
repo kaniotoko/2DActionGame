@@ -199,8 +199,8 @@ MonoBehaviour:
   smallJumpPowerX: 5
   smallJumpCount: 2
   smallJumpInterval: 0.3
-  bigJumpPowerY: 24
-  chaseSpeedX: 12
+  bigJumpPowerY: 20
+  chaseSpeedX: 24
   slamSpeed: 30
   slamDelay: 0.2
   preSlamLiftSpeed: 6
