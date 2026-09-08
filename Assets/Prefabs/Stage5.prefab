@@ -129,6 +129,8 @@ MonoBehaviour:
     duration: 18
   gemPrefab: {fileID: 737956220449250086, guid: 444cb9140b9b04cb291448cb9ab47126, type: 3}
   gemSpawnPos: {x: 0, y: 2}
+  smokePrefab: {fileID: 7451209836114732095, guid: d1333b04e51245f395a9b7055c01b5c8, type: 3}
+  smokeTime: 2
 --- !u!1 &4206704791418888172
 GameObject:
   m_ObjectHideFlags: 0
