@@ -198,3 +198,5 @@ MonoBehaviour:
   frequency: 1.3
   attackInterval: 6
   attackSpeed: 2
+  preAttackHopHeight: 2
+  preAttackTime: 0.5
